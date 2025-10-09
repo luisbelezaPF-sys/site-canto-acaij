@@ -194,31 +194,12 @@ export default function Home() {
   }
 
   const openWhatsApp = (message: string) => {
-    if (typeof window === 'undefined') return
+    const whatsappNumber = "5535997440729"
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
     
-    try {
-      const whatsappNumber = "5535997440729"
-      const encodedMessage = encodeURIComponent(message)
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
-      
-      showSuccessNotification()
-      
-      // Tentar abrir em nova aba primeiro
-      const newWindow = window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
-      
-      // Fallback se bloqueado
-      if (!newWindow) {
-        window.location.href = whatsappUrl
-      }
-      
-    } catch (error) {
-      console.error('Erro ao abrir WhatsApp:', error)
-      // Fallback final
-      const whatsappNumber = "5535997440729"
-      const encodedMessage = encodeURIComponent(message)
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
-      window.location.href = whatsappUrl
-    }
+    showSuccessNotification()
+    window.open(whatsappUrl, '_blank')
   }
 
   const addAcaiToCart = () => {
