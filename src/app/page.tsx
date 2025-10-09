@@ -892,12 +892,20 @@ export default function Home() {
               <p className="text-xl md:text-2xl mb-8 leading-relaxed">
                 O melhor açaí premium de Poço Fundo! Monte o seu, escolha seus acompanhamentos favoritos e peça direto pelo WhatsApp.
               </p>
-              <button
-                onClick={() => sendToWhatsApp()}
-                className="bg-yellow-400 text-purple-800 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                Fazer Pedido no WhatsApp
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => setActiveSection('acai')}
+                  className="bg-yellow-400 text-purple-800 px-8 py-4 rounded-full text-xl font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  Ver Cardápio de Açaí
+                </button>
+                <button
+                  onClick={() => setActiveSection('milkshake')}
+                  className="bg-purple-100 text-purple-800 px-8 py-4 rounded-full text-xl font-bold hover:bg-purple-200 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  Ver Milk Shakes
+                </button>
+              </div>
             </div>
             
             <div className="grid md:grid-cols-3 gap-8 mt-12">
