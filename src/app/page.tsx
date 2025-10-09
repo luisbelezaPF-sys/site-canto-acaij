@@ -25,6 +25,9 @@ export default function Home() {
   const [isAcaiZero, setIsAcaiZero] = useState(false)
   const [showNotification, setShowNotification] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [streetName, setStreetName] = useState('')
+  const [houseNumber, setHouseNumber] = useState('')
   const [isClient, setIsClient] = useState(false)
 
   // Garantir que componente só renderize no cliente
@@ -283,6 +286,11 @@ export default function Home() {
       return
     }
 
+    if (!deliveryAddress || !streetName || !houseNumber) {
+      alert('Por favor, preencha todos os campos de endereço para entrega!')
+      return
+    }
+
     let message = `🍇 Olá! Quero fazer um pedido no O Canto do Açaí! 🍇\n\n`
     
     cart.forEach((item, index) => {
@@ -298,6 +306,10 @@ export default function Home() {
     })
 
     message += `💳 Forma de Pagamento: ${getPaymentMethodName(selectedPaymentMethod)}\n\n`
+    message += `🏠 ENDEREÇO PARA ENTREGA:\n`
+    message += `• Endereço: ${deliveryAddress}\n`
+    message += `• Rua: ${streetName}\n`
+    message += `• Número da Casa: ${houseNumber}\n\n`
     message += `💰 RESUMO FINANCEIRO:\n`
     message += `• Subtotal itens: R$ ${calculateItemsTotal().toFixed(2)}\n`
     message += `• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}\n`
@@ -515,6 +527,56 @@ export default function Home() {
                         </button>
                       )
                     })}
+                  </div>
+                </div>
+
+                {/* Endereço para Entrega - SEMPRE VISÍVEL QUANDO HÁ ITENS NO CARRINHO */}
+                <div className="bg-white rounded-2xl p-6 shadow-xl mb-8">
+                  <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
+                    🏠 Endereço para Entrega
+                    {deliveryAddress && streetName && houseNumber && (
+                      <span className="text-lg text-green-600 ml-2">✓ Preenchido</span>
+                    )}
+                  </h3>
+                  <div className="grid md:grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-purple-800 mb-2">
+                        Endereço (Bairro/Referência)
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        placeholder="Ex: Centro, próximo ao mercado..."
+                        className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-purple-800 mb-2">
+                          Nome da Rua
+                        </label>
+                        <input
+                          type="text"
+                          value={streetName}
+                          onChange={(e) => setStreetName(e.target.value)}
+                          placeholder="Ex: Rua das Flores"
+                          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-purple-800 mb-2">
+                          Número da Casa
+                        </label>
+                        <input
+                          type="text"
+                          value={houseNumber}
+                          onChange={(e) => setHouseNumber(e.target.value)}
+                          placeholder="Ex: 123, 45A, S/N"
+                          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
