@@ -486,76 +486,56 @@ export default function Home() {
 
     const registeredOrder = registerOrder(orderData)
 
-    // Formatação específica para WhatsApp seguindo as regras solicitadas
-    let message = `🍇 *NOVO PEDIDO - O CANTO DO AÇAÍ* 🍇
-
-`
+    // MENSAGEM CORRIGIDA PARA WHATSAPP - FORMATAÇÃO LIMPA E ORGANIZADA
+    let message = `NOVO PEDIDO - O CANTO DO ACAI\n\n`
     
     // Nome do cliente
     if (customerName) {
-      message += `👤 *CLIENTE:*
-${customerName}
-
-`
+      message += `Nome do Cliente: ${customerName}\n\n`
     }
     
-    // Itens do pedido
-    message += `📦 *ITENS DO PEDIDO:*
-
-`
+    // Itens do pedido - CADA ITEM EM LINHAS SEPARADAS
+    message += `Itens do Pedido:\n`
     cart.forEach((item, index) => {
-      message += `• *${item.type === 'acai' ? 'Açaí' : 'Milk Shake'}* ${item.size}${item.isZero ? ' (Zero)' : ''}
-  Sabor: ${item.flavor}`
+      message += `${index + 1}. Tipo: ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'}\n`
+      message += `   Tamanho: ${item.size}${item.isZero ? ' (Zero)' : ''}\n`
+      message += `   Sabor: ${item.flavor}\n`
       if (item.toppings.length > 0) {
-        message += `
-  Adicionais: ${item.toppings.join(', ')}`
+        message += `   Adicionais: ${item.toppings.join(', ')}\n`
       }
-      message += `
-  Quantidade: ${item.quantity}
-  Subtotal: R$ ${(item.price * item.quantity).toFixed(2)}
-
-`
+      message += `   Quantidade: ${item.quantity}\n`
+      message += `   Subtotal: R$ ${(item.price * item.quantity).toFixed(2)}\n\n`
     })
 
     // Resumo financeiro
-    message += `💰 *RESUMO FINANCEIRO:*
-• Subtotal dos itens: R$ ${calculateItemsTotal().toFixed(2)}
-• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}
-• *Total final: R$ ${calculateCartTotal().toFixed(2)}*
-
-`
+    message += `Resumo Financeiro:\n`
+    message += `Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\n`
+    message += `Taxa de Entrega: R$ ${deliveryFee.toFixed(2)}\n`
+    message += `Total Final: R$ ${calculateCartTotal().toFixed(2)}\n`
     
-    // Forma de pagamento
-    message += `💳 *FORMA DE PAGAMENTO:*
-${selectedPayment}`
+    // Valor pago e troco (se dinheiro)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
       const cashValue = parseFloat(cashAmount)
       const total = calculateCartTotal()
       const change = cashValue - total
-      message += `
-• Valor pago: R$ ${cashValue.toFixed(2)}`
+      message += `Valor Pago: R$ ${cashValue.toFixed(2)}\n`
       if (change > 0) {
-        message += `
-• Troco: R$ ${change.toFixed(2)}`
+        message += `Troco: R$ ${change.toFixed(2)}\n`
       }
     }
-    message += `
-
-`
+    message += `\n`
     
-    // Dados de entrega
-    message += `📍 *DADOS DE ENTREGA:*
-• Endereço completo: ${deliveryAddress}
-• Rua: ${streetName}
-• Número: ${houseNumber}
-
-`
+    // Forma de pagamento
+    message += `Forma de Pagamento: ${selectedPayment}\n\n`
+    
+    // Dados de entrega - CADA INFORMAÇÃO EM LINHA SEPARADA
+    message += `Dados de Entrega:\n`
+    message += `Endereco: ${deliveryAddress}\n`
+    message += `Rua: ${streetName}\n`
+    message += `Numero: ${houseNumber}\n\n`
     
     // Número do pedido
-    message += `🆔 *NÚMERO DO PEDIDO:*
-#${registeredOrder.id}
-
-Aguardo confirmação! 😊`
+    message += `Numero do Pedido: ${registeredOrder.id}`
 
     openWhatsApp(message)
 
@@ -582,7 +562,7 @@ Aguardo confirmação! 😊`
   }
 
   const sendToWhatsApp = (customMessage?: string) => {
-    const message = customMessage || `🍇 Olá! Quero fazer um pedido no O Canto do Açaí! 🍇\\n\\nPor favor, me ajude a montar meu pedido:\\n• Tamanho:\\n• Sabor:\\n• Acompanhamentos:\\n• Endereço para entrega:\\n\\nObrigado!`
+    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\n\nPor favor, me ajude a montar meu pedido:\n• Tamanho:\n• Sabor:\n• Acompanhamentos:\n• Endereço para entrega:\n\nObrigado!`
     openWhatsApp(message)
   }
 
@@ -1707,7 +1687,7 @@ Aguardo confirmação! 😊`
                   Estamos sempre prontos para atender você! Entre em contato pelo WhatsApp e faça seu pedido.
                 </p>
                 <button
-                  onClick={() => sendToWhatsApp(`🍇 Olá! Gostaria de entrar em contato com vocês! 🍇\\n\\nTenho uma dúvida sobre:\\n\\nObrigado!`)}
+                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\n\nTenho uma dúvida sobre:\n\nObrigado!`)}
                   className="bg-yellow-400 text-purple-800 px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105"
                 >
                   <Phone className="inline-block mr-2" size={20} />
@@ -1741,7 +1721,7 @@ Aguardo confirmação! 😊`
           <p className="text-purple-200 mb-4">O melhor açaí premium de Poço Fundo – MG</p>
           <div className="flex justify-center space-x-6 mb-4">
             <button
-              onClick={() => sendToWhatsApp("🍇 Olá! Quero fazer um pedido no O Canto do Açaí! 🍇")}
+              onClick={() => sendToWhatsApp("Olá! Quero fazer um pedido no O Canto do Açaí!")}
               className="text-purple-200 hover:text-yellow-400 transition-colors"
             >
               <Phone size={24} />
