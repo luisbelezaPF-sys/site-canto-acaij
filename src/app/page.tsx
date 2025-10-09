@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ShoppingCart, Phone, MapPin, Clock, Instagram, Plus, Minus, CreditCard, Banknote, Smartphone, Trash2 } from 'lucide-react'
 
 interface OrderItem {
@@ -28,12 +28,6 @@ export default function Home() {
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [streetName, setStreetName] = useState('')
   const [houseNumber, setHouseNumber] = useState('')
-  const [isClient, setIsClient] = useState(false)
-
-  // Garantir que componente só renderize no cliente
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
 
   const deliveryFee = 3.00
 
@@ -200,7 +194,7 @@ export default function Home() {
   }
 
   const openWhatsApp = (message: string) => {
-    if (!isClient) return
+    if (typeof window === 'undefined') return
     
     try {
       const whatsappNumber = "5535997440729"
@@ -335,11 +329,6 @@ export default function Home() {
       {children}
     </section>
   )
-
-  // Não renderizar até estar no cliente
-  if (!isClient) {
-    return <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-purple-50 to-yellow-100"></div>
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-purple-50 to-yellow-100">
