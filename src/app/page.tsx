@@ -486,49 +486,76 @@ export default function Home() {
 
     const registeredOrder = registerOrder(orderData)
 
-    let message = `🍇 Olá! Quero fazer um pedido no O Canto do Açaí! 🍇\\n\\n`
+    // Formatação específica para WhatsApp seguindo as regras solicitadas
+    let message = `🍇 *NOVO PEDIDO - O CANTO DO AÇAÍ* 🍇
+
+`
     
+    // Nome do cliente
     if (customerName) {
-      message += `👤 Nome: ${customerName}\\n\\n`
+      message += `👤 *CLIENTE:*
+${customerName}
+
+`
     }
     
     // Itens do pedido
+    message += `📦 *ITENS DO PEDIDO:*
+
+`
     cart.forEach((item, index) => {
-      message += `📦 ITEM ${index + 1}:\\n`
-      message += `• Tipo: ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'}\\n`
-      message += `• Tamanho: ${item.size}${item.isZero ? ' (Linha Zero)' : item.type === 'acai' ? ' (Tradicional)' : ''}\\n`
-      message += `• Sabor: ${item.flavor}\\n`
+      message += `• *${item.type === 'acai' ? 'Açaí' : 'Milk Shake'}* ${item.size}${item.isZero ? ' (Zero)' : ''}
+  Sabor: ${item.flavor}`
       if (item.toppings.length > 0) {
-        message += `• Adicionais: ${item.toppings.join(', ')}\\n`
+        message += `
+  Adicionais: ${item.toppings.join(', ')}`
       }
-      message += `• Quantidade: ${item.quantity}\\n`
-      message += `• Subtotal: R$ ${(item.price * item.quantity).toFixed(2)}\\n\\n`
+      message += `
+  Quantidade: ${item.quantity}
+  Subtotal: R$ ${(item.price * item.quantity).toFixed(2)}
+
+`
     })
 
-    message += `💰 RESUMO FINANCEIRO:\\n`
-    message += `• Subtotal itens: R$ ${calculateItemsTotal().toFixed(2)}\\n`
-    message += `• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}\\n`
-    message += `• TOTAL FINAL: R$ ${calculateCartTotal().toFixed(2)}\\n\\n`
+    // Resumo financeiro
+    message += `💰 *RESUMO FINANCEIRO:*
+• Subtotal dos itens: R$ ${calculateItemsTotal().toFixed(2)}
+• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}
+• *Total final: R$ ${calculateCartTotal().toFixed(2)}*
+
+`
     
-    message += `💳 FORMA DE PAGAMENTO: ${selectedPayment}`
+    // Forma de pagamento
+    message += `💳 *FORMA DE PAGAMENTO:*
+${selectedPayment}`
     if (selectedPayment === 'Dinheiro' && cashAmount) {
       const cashValue = parseFloat(cashAmount)
       const total = calculateCartTotal()
       const change = cashValue - total
-      message += `\\n💵 Valor pago: R$ ${cashValue.toFixed(2)}`
+      message += `
+• Valor pago: R$ ${cashValue.toFixed(2)}`
       if (change > 0) {
-        message += `\\n💰 Troco: R$ ${change.toFixed(2)}`
+        message += `
+• Troco: R$ ${change.toFixed(2)}`
       }
     }
-    message += `\\n\\n`
+    message += `
+
+`
     
-    message += `📍 DADOS PARA ENTREGA:\\n`
-    message += `• Endereço: ${deliveryAddress}\\n`
-    message += `• Rua: ${streetName}\\n`
-    message += `• Número da casa: ${houseNumber}\\n\\n`
+    // Dados de entrega
+    message += `📍 *DADOS DE ENTREGA:*
+• Endereço completo: ${deliveryAddress}
+• Rua: ${streetName}
+• Número: ${houseNumber}
+
+`
     
-    message += `🆔 Pedido #${registeredOrder.id}\\n`
-    message += `Aguardo confirmação! 😊`
+    // Número do pedido
+    message += `🆔 *NÚMERO DO PEDIDO:*
+#${registeredOrder.id}
+
+Aguardo confirmação! 😊`
 
     openWhatsApp(message)
 
