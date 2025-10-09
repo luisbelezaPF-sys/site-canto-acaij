@@ -530,57 +530,55 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Endereço para Entrega */}
-                {selectedPaymentMethod && (
-                  <div className="bg-white rounded-2xl p-6 shadow-xl mb-8">
-                    <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
-                      🏠 Endereço para Entrega
-                      {deliveryAddress && streetName && houseNumber && (
-                        <span className="text-lg text-green-600 ml-2">✓ Preenchido</span>
-                      )}
-                    </h3>
-                    <div className="grid md:grid-cols-1 gap-4">
+                {/* Endereço para Entrega - SEMPRE VISÍVEL QUANDO HÁ ITENS NO CARRINHO */}
+                <div className="bg-white rounded-2xl p-6 shadow-xl mb-8">
+                  <h3 className="text-2xl font-bold text-purple-800 mb-6 flex items-center">
+                    🏠 Endereço para Entrega
+                    {deliveryAddress && streetName && houseNumber && (
+                      <span className="text-lg text-green-600 ml-2">✓ Preenchido</span>
+                    )}
+                  </h3>
+                  <div className="grid md:grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-purple-800 mb-2">
+                        Endereço (Bairro/Referência)
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        placeholder="Ex: Centro, próximo ao mercado..."
+                        className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-purple-800 mb-2">
-                          Endereço (Bairro/Referência)
+                          Nome da Rua
                         </label>
                         <input
                           type="text"
-                          value={deliveryAddress}
-                          onChange={(e) => setDeliveryAddress(e.target.value)}
-                          placeholder="Ex: Centro, próximo ao mercado..."
+                          value={streetName}
+                          onChange={(e) => setStreetName(e.target.value)}
+                          placeholder="Ex: Rua das Flores"
                           className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
                         />
                       </div>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-purple-800 mb-2">
-                            Nome da Rua
-                          </label>
-                          <input
-                            type="text"
-                            value={streetName}
-                            onChange={(e) => setStreetName(e.target.value)}
-                            placeholder="Ex: Rua das Flores"
-                            className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-purple-800 mb-2">
-                            Número da Casa
-                          </label>
-                          <input
-                            type="text"
-                            value={houseNumber}
-                            onChange={(e) => setHouseNumber(e.target.value)}
-                            placeholder="Ex: 123, 45A, S/N"
-                            className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-sm font-medium text-purple-800 mb-2">
+                          Número da Casa
+                        </label>
+                        <input
+                          type="text"
+                          value={houseNumber}
+                          onChange={(e) => setHouseNumber(e.target.value)}
+                          placeholder="Ex: 123, 45A, S/N"
+                          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none transition-colors"
+                        />
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Resumo Final */}
                 <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-2xl p-6 shadow-xl mb-8">
