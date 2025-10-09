@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from 'react'
-import { ShoppingCart, Phone, MapPin, Clock, Instagram, Plus, Minus, Trash2, CreditCard, DollarSign } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ShoppingCart, Phone, MapPin, Clock, Instagram, Plus, Minus, Trash2, CreditCard, DollarSign, FileText, Calendar, TrendingUp, Package, Lock, LogOut } from 'lucide-react'
 
 interface OrderItem {
   id: string
@@ -12,6 +12,29 @@ interface OrderItem {
   price: number
   isZero?: boolean
   quantity: number
+}
+
+interface CompletedOrder {
+  id: string
+  items: OrderItem[]
+  customerName?: string
+  address?: string
+  streetName?: string
+  houseNumber?: string
+  paymentMethod: string
+  subtotal: number
+  deliveryFee: number
+  total: number
+  timestamp: Date
+  date: string
+}
+
+interface DailyReport {
+  date: string
+  totalSales: number
+  totalRevenue: number
+  orders: CompletedOrder[]
+  productSales: { [key: string]: { quantity: number, revenue: number } }
 }
 
 export default function Home() {
@@ -29,8 +52,100 @@ export default function Home() {
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [streetName, setStreetName] = useState('')
   const [houseNumber, setHouseNumber] = useState('')
+  const [customerName, setCustomerName] = useState('')
+
+  // Estados para sistema de vendas e relatórios
+  const [completedOrders, setCompletedOrders] = useState<CompletedOrder[]>([])
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>([])
+  const [showReports, setShowReports] = useState(false)
+
+  // Estados para autenticação
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [showLogin, setShowLogin] = useState(false)
+  const [loginUsername, setLoginUsername] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
 
   const deliveryFee = 3.00
+  const whatsappNumber = "+5535997440729" // Número para relatórios
+
+  // Verificar autenticação salva
+  useEffect(() => {
+    const savedAuth = localStorage.getItem('acai-admin-auth')
+    if (savedAuth === 'authenticated') {
+      setIsAuthenticated(true)
+    }
+  }, [])
+
+  // Carregar dados salvos no localStorage
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('acai-orders')
+    const savedReports = localStorage.getItem('acai-reports')
+    
+    if (savedOrders) {
+      const orders = JSON.parse(savedOrders).map((order: any) => ({
+        ...order,
+        timestamp: new Date(order.timestamp)
+      }))
+      setCompletedOrders(orders)
+    }
+    
+    if (savedReports) {
+      setDailyReports(JSON.parse(savedReports))
+    }
+
+    // Verificar se precisa gerar relatório diário (executar às 23:59)
+    const checkDailyReport = () => {
+      const now = new Date()
+      const hour = now.getHours()
+      const minute = now.getMinutes()
+      
+      // Executar às 23:59
+      if (hour === 23 && minute === 59) {
+        generateAndSendDailyReport()
+      }
+    }
+
+    // Verificar a cada minuto
+    const interval = setInterval(checkDailyReport, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Função de login
+  const handleLogin = () => {
+    if (loginUsername === 'admin' && loginPassword === 'jon2425') {
+      setIsAuthenticated(true)
+      setShowLogin(false)
+      setLoginError('')
+      setLoginUsername('')
+      setLoginPassword('')
+      localStorage.setItem('acai-admin-auth', 'authenticated')
+    } else {
+      setLoginError('Usuário ou senha incorretos!')
+    }
+  }
+
+  // Função de logout
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    setShowReports(false)
+    localStorage.removeItem('acai-admin-auth')
+  }
+
+  // Função para abrir relatórios (com verificação de autenticação)
+  const openReports = () => {
+    if (isAuthenticated) {
+      setShowReports(true)
+    } else {
+      setShowLogin(true)
+    }
+  }
+
+  // Salvar dados no localStorage
+  const saveData = (orders: CompletedOrder[], reports: DailyReport[]) => {
+    localStorage.setItem('acai-orders', JSON.stringify(orders))
+    localStorage.setItem('acai-reports', JSON.stringify(reports))
+  }
 
   const acaiSizes = [
     { size: '300ml', price: 10.00 },
@@ -158,6 +273,128 @@ export default function Home() {
     setCart([])
   }
 
+  // Registrar pedido completo
+  const registerOrder = (orderData: Omit<CompletedOrder, 'id' | 'timestamp' | 'date'>) => {
+    const now = new Date()
+    const newOrder: CompletedOrder = {
+      ...orderData,
+      id: Date.now().toString(),
+      timestamp: now,
+      date: now.toISOString().split('T')[0] // YYYY-MM-DD
+    }
+
+    const updatedOrders = [...completedOrders, newOrder]
+    setCompletedOrders(updatedOrders)
+    saveData(updatedOrders, dailyReports)
+
+    return newOrder
+  }
+
+  // Gerar relatório diário
+  const generateDailyReport = (date: string): DailyReport => {
+    const dayOrders = completedOrders.filter(order => order.date === date)
+    
+    const productSales: { [key: string]: { quantity: number, revenue: number } } = {}
+    
+    dayOrders.forEach(order => {
+      order.items.forEach(item => {
+        const productKey = `${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''} - ${item.flavor}`
+        
+        if (!productSales[productKey]) {
+          productSales[productKey] = { quantity: 0, revenue: 0 }
+        }
+        
+        productSales[productKey].quantity += item.quantity
+        productSales[productKey].revenue += item.price * item.quantity
+      })
+    })
+
+    return {
+      date,
+      totalSales: dayOrders.length,
+      totalRevenue: dayOrders.reduce((total, order) => total + order.total, 0),
+      orders: dayOrders,
+      productSales
+    }
+  }
+
+  // Gerar e enviar relatório diário automaticamente
+  const generateAndSendDailyReport = () => {
+    const today = new Date().toISOString().split('T')[0]
+    const report = generateDailyReport(today)
+    
+    if (report.totalSales > 0) {
+      const updatedReports = [...dailyReports.filter(r => r.date !== today), report]
+      setDailyReports(updatedReports)
+      saveData(completedOrders, updatedReports)
+      
+      sendDailyReportToWhatsApp(report)
+    }
+  }
+
+  // Formatar relatório para WhatsApp
+  const formatReportForWhatsApp = (report: DailyReport): string => {
+    const date = new Date(report.date).toLocaleDateString('pt-BR')
+    
+    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\n`
+    message += `📅 Data: ${date}\n\n`
+    
+    message += `💰 *RESUMO FINANCEIRO:*\n`
+    message += `• Total de vendas: ${report.totalSales} pedidos\n`
+    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\n\n`
+    
+    message += `📦 *PRODUTOS MAIS VENDIDOS:*\n`
+    const sortedProducts = Object.entries(report.productSales)
+      .sort(([,a], [,b]) => b.quantity - a.quantity)
+      .slice(0, 5)
+    
+    sortedProducts.forEach(([product, data], index) => {
+      message += `${index + 1}. ${product}\n`
+      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\n`
+    })
+    
+    message += `\n📋 *LISTA COMPLETA DE PEDIDOS:*\n`
+    report.orders.forEach((order, index) => {
+      const time = order.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      message += `\n🕐 Pedido ${index + 1} - ${time}\n`
+      
+      if (order.customerName) {
+        message += `👤 Cliente: ${order.customerName}\n`
+      }
+      
+      message += `💳 Pagamento: ${order.paymentMethod}\n`
+      
+      if (order.address) {
+        message += `📍 Endereço: ${order.address}\n`
+        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\n`
+        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\n`
+      }
+      
+      message += `📦 Itens:\n`
+      order.items.forEach(item => {
+        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\n`
+        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\n`
+        if (item.toppings.length > 0) {
+          message += `    Adicionais: ${item.toppings.join(', ')}\n`
+        }
+      })
+      
+      message += `💰 Total: R$ ${order.total.toFixed(2)}\n`
+    })
+    
+    message += `\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
+    
+    return message
+  }
+
+  // Enviar relatório via WhatsApp
+  const sendDailyReportToWhatsApp = (report: DailyReport) => {
+    const message = formatReportForWhatsApp(report)
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/5535997440729?text=${encodedMessage}`
+    window.open(whatsappUrl, '_blank')
+  }
+
   const openWhatsApp = (message: string) => {
     const whatsappNumber = "5535997440729"
     const encodedMessage = encodeURIComponent(message)
@@ -222,7 +459,26 @@ export default function Home() {
       return
     }
 
+    // Registrar o pedido no sistema
+    const orderData = {
+      items: [...cart],
+      customerName: customerName || undefined,
+      address: deliveryAddress,
+      streetName,
+      houseNumber,
+      paymentMethod: selectedPayment,
+      subtotal: calculateItemsTotal(),
+      deliveryFee,
+      total: calculateCartTotal()
+    }
+
+    const registeredOrder = registerOrder(orderData)
+
     let message = `🍇 Olá! Quero fazer um pedido no O Canto do Açaí! 🍇\n\n`
+    
+    if (customerName) {
+      message += `👤 Nome: ${customerName}\n\n`
+    }
     
     // Itens do pedido
     cart.forEach((item, index) => {
@@ -249,9 +505,20 @@ export default function Home() {
     message += `• Rua: ${streetName}\n`
     message += `• Número da casa: ${houseNumber}\n\n`
     
+    message += `🆔 Pedido #${registeredOrder.id}\n`
     message += `Aguardo confirmação! 😊`
 
     openWhatsApp(message)
+
+    // Limpar formulário após envio
+    setCart([])
+    setSelectedPayment('')
+    setDeliveryAddress('')
+    setStreetName('')
+    setHouseNumber('')
+    setCustomerName('')
+    
+    alert('Pedido registrado e enviado com sucesso! 🎉')
   }
 
   const sendCartToWhatsApp = () => {
@@ -293,6 +560,34 @@ export default function Home() {
                   </span>
                 )}
               </button>
+              
+              {/* Botão de Relatórios com Autenticação */}
+              <div className="relative">
+                <button
+                  onClick={openReports}
+                  className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-all duration-300"
+                  title="Relatórios de Vendas (Admin)"
+                >
+                  {isAuthenticated ? <FileText size={24} /> : <Lock size={24} />}
+                </button>
+                
+                {/* Indicador de Admin Logado */}
+                {isAuthenticated && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                )}
+              </div>
+
+              {/* Botão de Logout (apenas se autenticado) */}
+              {isAuthenticated && (
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-all duration-300"
+                  title="Sair (Admin)"
+                >
+                  <LogOut size={24} />
+                </button>
+              )}
+
               <nav className="hidden md:flex space-x-6">
                 {['inicio', 'acai', 'milkshake', 'como-pedir', 'contato'].map((section) => (
                   <button
@@ -340,6 +635,228 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Login */}
+      {showLogin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-purple-600 text-white rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                <Lock size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-purple-800">Acesso Administrativo</h2>
+              <p className="text-gray-600 mt-2">Entre com suas credenciais para acessar os relatórios</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Usuário:
+                </label>
+                <input
+                  type="text"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  placeholder="Digite o usuário"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Senha:
+                </label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Digite a senha"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                />
+              </div>
+              
+              {loginError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
+                  {loginError}
+                </div>
+              )}
+              
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    setShowLogin(false)
+                    setLoginError('')
+                    setLoginUsername('')
+                    setLoginPassword('')
+                  }}
+                  className="flex-1 bg-gray-500 text-white py-3 rounded-xl font-bold hover:bg-gray-600 transition-all duration-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleLogin}
+                  className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-all duration-300"
+                >
+                  Entrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Relatórios (apenas para usuários autenticados) */}
+      {showReports && isAuthenticated && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-purple-800">📊 Relatórios de Vendas</h2>
+                    <p className="text-sm text-green-600 font-medium">✓ Acesso Administrativo Autorizado</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowReports(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Estatísticas Gerais */}
+              <div className="grid md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100">Total de Pedidos</p>
+                      <p className="text-3xl font-bold">{completedOrders.length}</p>
+                    </div>
+                    <Package size={40} className="text-green-200" />
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100">Faturamento Total</p>
+                      <p className="text-3xl font-bold">
+                        R$ {completedOrders.reduce((total, order) => total + order.total, 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <TrendingUp size={40} className="text-blue-200" />
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-purple-100">Relatórios Gerados</p>
+                      <p className="text-3xl font-bold">{dailyReports.length}</p>
+                    </div>
+                    <Calendar size={40} className="text-purple-200" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex flex-wrap gap-4 mb-6">
+                <button
+                  onClick={() => {
+                    const today = new Date().toISOString().split('T')[0]
+                    const report = generateDailyReport(today)
+                    sendDailyReportToWhatsApp(report)
+                  }}
+                  className="bg-green-500 text-white px-6 py-3 rounded-full font-bold hover:bg-green-600 transition-all duration-300"
+                >
+                  📱 Enviar Relatório de Hoje
+                </button>
+                
+                <button
+                  onClick={generateAndSendDailyReport}
+                  className="bg-blue-500 text-white px-6 py-3 rounded-full font-bold hover:bg-blue-600 transition-all duration-300"
+                >
+                  📊 Gerar Relatório Automático
+                </button>
+              </div>
+
+              {/* Lista de Relatórios Diários */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-purple-800">📅 Relatórios por Data</h3>
+                
+                {dailyReports.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText size={48} className="mx-auto mb-4 text-gray-300" />
+                    <p>Nenhum relatório gerado ainda</p>
+                    <p className="text-sm">Os relatórios são gerados automaticamente às 23:59</p>
+                  </div>
+                ) : (
+                  dailyReports
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((report) => (
+                      <div key={report.date} className="bg-gray-50 rounded-xl p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="text-lg font-bold text-purple-800">
+                              📅 {new Date(report.date).toLocaleDateString('pt-BR')}
+                            </h4>
+                            <div className="flex space-x-6 text-sm text-gray-600 mt-2">
+                              <span>📦 {report.totalSales} pedidos</span>
+                              <span>💰 R$ {report.totalRevenue.toFixed(2)}</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => sendDailyReportToWhatsApp(report)}
+                            className="bg-green-500 text-white px-4 py-2 rounded-full text-sm hover:bg-green-600 transition-all duration-300"
+                          >
+                            📱 Reenviar
+                          </button>
+                        </div>
+                        
+                        {/* Top 3 Produtos */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <h5 className="font-semibold text-gray-700 mb-2">🏆 Produtos Mais Vendidos</h5>
+                            <div className="space-y-1">
+                              {Object.entries(report.productSales)
+                                .sort(([,a], [,b]) => b.quantity - a.quantity)
+                                .slice(0, 3)
+                                .map(([product, data], index) => (
+                                  <div key={product} className="text-sm">
+                                    <span className="font-medium">{index + 1}. {product.split(' - ')[0]}</span>
+                                    <span className="text-gray-500 ml-2">({data.quantity}x)</span>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h5 className="font-semibold text-gray-700 mb-2">📊 Resumo</h5>
+                            <div className="text-sm space-y-1">
+                              <p>Ticket médio: R$ {(report.totalRevenue / report.totalSales).toFixed(2)}</p>
+                              <p>Produtos diferentes: {Object.keys(report.productSales).length}</p>
+                              <p>Horário: {report.orders.length > 0 ? 
+                                `${report.orders[0].timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${report.orders[report.orders.length - 1].timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` 
+                                : 'N/A'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="container mx-auto px-4 py-8">
         {/* Seção Início */}
@@ -812,6 +1329,20 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Campo Nome do Cliente */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    👤 Seu nome (opcional):
+                  </label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Ex: João Silva"
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+
                 {/* Formas de Pagamento - MELHORADAS */}
                 <div className="mb-6">
                   <h4 className="text-xl font-bold text-purple-800 mb-4">💳 Escolha a forma de pagamento:</h4>
@@ -950,10 +1481,16 @@ export default function Home() {
                     </div>
 
                     {/* Resumo dos dados preenchidos */}
-                    {(selectedPayment || deliveryAddress || streetName || houseNumber) && (
+                    {(selectedPayment || deliveryAddress || streetName || houseNumber || customerName) && (
                       <div className="bg-purple-50 rounded-xl p-4 mt-6">
                         <h5 className="font-bold text-purple-800 mb-2">📋 Resumo dos dados:</h5>
                         <div className="text-sm space-y-1">
+                          {customerName && (
+                            <p className="flex items-center space-x-2">
+                              <span>👤</span>
+                              <span>Nome: <strong>{customerName}</strong></span>
+                            </p>
+                          )}
                           {selectedPayment && (
                             <p className="flex items-center space-x-2">
                               <span>💳</span>
