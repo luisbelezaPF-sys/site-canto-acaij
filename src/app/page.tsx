@@ -38,6 +38,13 @@ interface DailyReport {
   productSales: { [key: string]: { quantity: number, revenue: number } }
 }
 
+interface PromotionImage {
+  id: string
+  url: string
+  title: string
+  description: string
+}
+
 export default function Home() {
   const [cart, setCart] = useState<OrderItem[]>([])
   const [activeSection, setActiveSection] = useState('inicio')
@@ -68,6 +75,9 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
 
+  // Estados para promoções
+  const [promotionImages, setPromotionImages] = useState<PromotionImage[]>([])
+
   const deliveryFee = 3.00
   const whatsappNumber = "+5535997440729" // Número para relatórios
 
@@ -83,6 +93,7 @@ export default function Home() {
   useEffect(() => {
     const savedOrders = localStorage.getItem('acai-orders')
     const savedReports = localStorage.getItem('acai-reports')
+    const savedPromotions = localStorage.getItem('acai-promotions')
     
     if (savedOrders) {
       const orders = JSON.parse(savedOrders).map((order: any) => ({
@@ -94,6 +105,40 @@ export default function Home() {
     
     if (savedReports) {
       setDailyReports(JSON.parse(savedReports))
+    }
+
+    if (savedPromotions) {
+      setPromotionImages(JSON.parse(savedPromotions))
+    } else {
+      // Imagens de promoção padrão
+      const defaultPromotions: PromotionImage[] = [
+        {
+          id: '1',
+          url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&h=300&fit=crop',
+          title: 'Promoção Açaí Premium',
+          description: 'Açaí 500ml + 2 acompanhamentos por apenas R$ 15,00'
+        },
+        {
+          id: '2',
+          url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400&h=300&fit=crop',
+          title: 'Combo Milk Shake',
+          description: 'Milk Shake 700ml + Açaí 300ml por R$ 25,00'
+        },
+        {
+          id: '3',
+          url: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop',
+          title: 'Oferta Especial',
+          description: 'Na compra de 2 açaís, ganhe 1 água mineral grátis'
+        },
+        {
+          id: '4',
+          url: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop',
+          title: 'Promoção Final de Semana',
+          description: '20% de desconto em todos os produtos aos sábados e domingos'
+        }
+      ]
+      setPromotionImages(defaultPromotions)
+      localStorage.setItem('acai-promotions', JSON.stringify(defaultPromotions))
     }
 
     // Verificar se precisa gerar relatório diário (executar às 23:59)
@@ -487,52 +532,52 @@ export default function Home() {
     const registeredOrder = registerOrder(orderData)
 
     // MENSAGEM CORRIGIDA PARA WHATSAPP - FORMATAÇÃO LIMPA E ORGANIZADA
-    let message = `NOVO PEDIDO - O CANTO DO ACAI\n\n`
+    let message = `NOVO PEDIDO - O CANTO DO ACAI\\n\\n`
     
     // Nome do cliente
     if (customerName) {
-      message += `Nome do Cliente: ${customerName}\n\n`
+      message += `Nome do Cliente: ${customerName}\\n\\n`
     }
     
     // Itens do pedido - CADA ITEM EM LINHAS SEPARADAS
-    message += `Itens do Pedido:\n`
+    message += `Itens do Pedido:\\n`
     cart.forEach((item, index) => {
-      message += `${index + 1}. Tipo: ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'}\n`
-      message += `   Tamanho: ${item.size}${item.isZero ? ' (Zero)' : ''}\n`
-      message += `   Sabor: ${item.flavor}\n`
+      message += `${index + 1}. Tipo: ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'}\\n`
+      message += `   Tamanho: ${item.size}${item.isZero ? ' (Zero)' : ''}\\n`
+      message += `   Sabor: ${item.flavor}\\n`
       if (item.toppings.length > 0) {
-        message += `   Adicionais: ${item.toppings.join(', ')}\n`
+        message += `   Adicionais: ${item.toppings.join(', ')}\\n`
       }
-      message += `   Quantidade: ${item.quantity}\n`
-      message += `   Subtotal: R$ ${(item.price * item.quantity).toFixed(2)}\n\n`
+      message += `   Quantidade: ${item.quantity}\\n`
+      message += `   Subtotal: R$ ${(item.price * item.quantity).toFixed(2)}\\n\\n`
     })
 
     // Resumo financeiro
-    message += `Resumo Financeiro:\n`
-    message += `Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\n`
-    message += `Taxa de Entrega: R$ ${deliveryFee.toFixed(2)}\n`
-    message += `Total Final: R$ ${calculateCartTotal().toFixed(2)}\n`
+    message += `Resumo Financeiro:\\n`
+    message += `Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\\n`
+    message += `Taxa de Entrega: R$ ${deliveryFee.toFixed(2)}\\n`
+    message += `Total Final: R$ ${calculateCartTotal().toFixed(2)}\\n`
     
     // Valor pago e troco (se dinheiro)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
       const cashValue = parseFloat(cashAmount)
       const total = calculateCartTotal()
       const change = cashValue - total
-      message += `Valor Pago: R$ ${cashValue.toFixed(2)}\n`
+      message += `Valor Pago: R$ ${cashValue.toFixed(2)}\\n`
       if (change > 0) {
-        message += `Troco: R$ ${change.toFixed(2)}\n`
+        message += `Troco: R$ ${change.toFixed(2)}\\n`
       }
     }
-    message += `\n`
+    message += `\\n`
     
     // Forma de pagamento
-    message += `Forma de Pagamento: ${selectedPayment}\n\n`
+    message += `Forma de Pagamento: ${selectedPayment}\\n\\n`
     
     // Dados de entrega - CADA INFORMAÇÃO EM LINHA SEPARADA
-    message += `Dados de Entrega:\n`
-    message += `Endereco: ${deliveryAddress}\n`
-    message += `Rua: ${streetName}\n`
-    message += `Numero: ${houseNumber}\n\n`
+    message += `Dados de Entrega:\\n`
+    message += `Endereco: ${deliveryAddress}\\n`
+    message += `Rua: ${streetName}\\n`
+    message += `Numero: ${houseNumber}\\n\\n`
     
     // Número do pedido
     message += `Numero do Pedido: ${registeredOrder.id}`
@@ -562,7 +607,7 @@ export default function Home() {
   }
 
   const sendToWhatsApp = (customMessage?: string) => {
-    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\n\nPor favor, me ajude a montar meu pedido:\n• Tamanho:\n• Sabor:\n• Acompanhamentos:\n• Endereço para entrega:\n\nObrigado!`
+    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\n\\nPor favor, me ajude a montar meu pedido:\\n• Tamanho:\\n• Sabor:\\n• Acompanhamentos:\\n• Endereço para entrega:\\n\\nObrigado!`
     openWhatsApp(message)
   }
 
@@ -605,7 +650,7 @@ export default function Home() {
               </div>
 
               <nav className="hidden md:flex space-x-6">
-                {['inicio', 'acai', 'milkshake', 'como-pedir', 'contato'].map((section) => (
+                {['inicio', 'acai', 'milkshake', 'promocoes', 'como-pedir', 'contato'].map((section) => (
                   <button
                     key={section}
                     onClick={() => setActiveSection(section)}
@@ -618,6 +663,7 @@ export default function Home() {
                     {section === 'inicio' ? 'Início' : 
                      section === 'acai' ? 'Açaí' :
                      section === 'milkshake' ? 'Milk Shake' :
+                     section === 'promocoes' ? 'Promoções' :
                      section === 'como-pedir' ? 'Como Pedir' : 'Contato'}
                   </button>
                 ))}
@@ -631,7 +677,7 @@ export default function Home() {
       <div className="md:hidden bg-purple-700 text-white">
         <div className="container mx-auto px-4 py-2">
           <div className="flex space-x-2 overflow-x-auto">
-            {['inicio', 'acai', 'milkshake', 'carrinho', 'como-pedir', 'contato'].map((section) => (
+            {['inicio', 'acai', 'milkshake', 'promocoes', 'carrinho', 'como-pedir', 'contato'].map((section) => (
               <button
                 key={section}
                 onClick={() => setActiveSection(section)}
@@ -644,6 +690,7 @@ export default function Home() {
                 {section === 'inicio' ? 'Início' : 
                  section === 'acai' ? 'Açaí' :
                  section === 'milkshake' ? 'Milk Shake' :
+                 section === 'promocoes' ? 'Promoções' :
                  section === 'carrinho' ? `Carrinho (${cart.reduce((total, item) => total + item.quantity, 0)})` :
                  section === 'como-pedir' ? 'Como Pedir' : 'Contato'}
               </button>
@@ -918,6 +965,66 @@ export default function Home() {
                 <p className="text-gray-600">Entregamos rapidinho na sua casa</p>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* Seção Promoções */}
+        {activeSection === 'promocoes' && (
+          <section className="mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-purple-800 mb-8 text-center">
+              Promoções Especiais 🎉
+            </h2>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              {promotionImages.map((promotion) => (
+                <div key={promotion.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                  <div className="relative">
+                    <img
+                      src={promotion.url}
+                      alt={promotion.title}
+                      className="w-full h-64 object-cover"
+                    />
+                    <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                      PROMOÇÃO
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-purple-800 mb-3">
+                      {promotion.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      {promotion.description}
+                    </p>
+                    <button
+                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\n\\n${promotion.description}\\n\\nPoderia me dar mais detalhes?`)}
+                      className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white py-3 rounded-full font-bold hover:from-purple-700 hover:to-purple-900 transition-all duration-300"
+                    >
+                      <Phone className="inline-block mr-2" size={20} />
+                      Aproveitar Promoção
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {promotionImages.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🎉</div>
+                <h3 className="text-2xl font-bold text-purple-800 mb-4">
+                  Nenhuma promoção ativa no momento
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Fique de olho! Sempre temos ofertas especiais para você.
+                </p>
+                <button
+                  onClick={() => sendToWhatsApp('Olá! Gostaria de saber sobre as promoções disponíveis.')}
+                  className="bg-purple-600 text-white px-6 py-3 rounded-full font-bold hover:bg-purple-700 transition-all duration-300"
+                >
+                  <Phone className="inline-block mr-2" size={20} />
+                  Perguntar sobre Promoções
+                </button>
+              </div>
+            )}
           </section>
         )}
 
@@ -1673,7 +1780,7 @@ export default function Home() {
                   Estamos sempre prontos para atender você! Entre em contato pelo WhatsApp e faça seu pedido.
                 </p>
                 <button
-                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\n\nTenho uma dúvida sobre:\n\nObrigado!`)}
+                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\n\\nTenho uma dúvida sobre:\\n\\nObrigado!`)}
                   className="bg-yellow-400 text-purple-800 px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105"
                 >
                   <Phone className="inline-block mr-2" size={20} />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, BarChart3 } from 'lucide-react';
+import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, Upload, Image as ImageIcon } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -38,6 +38,13 @@ interface Order {
   createdAt: Date;
 }
 
+interface PromotionImage {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+}
+
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,11 +52,13 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('pedidos');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [promotionImages, setPromotionImages] = useState<PromotionImage[]>([]);
   const [showProductForm, setShowProductForm] = useState(false);
+  const [showPromotionForm, setShowPromotionForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingPromotion, setEditingPromotion] = useState<PromotionImage | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoPrint, setAutoPrint] = useState(false);
 
   // Dados iniciais de produtos do site
   useEffect(() => {
@@ -208,6 +217,41 @@ export default function AdminPanel() {
       }
     ];
 
+    // Carregar promoções do localStorage ou usar padrão
+    const savedPromotions = localStorage.getItem('acai-promotions');
+    if (savedPromotions) {
+      setPromotionImages(JSON.parse(savedPromotions));
+    } else {
+      const defaultPromotions: PromotionImage[] = [
+        {
+          id: '1',
+          url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&h=300&fit=crop',
+          title: 'Promoção Açaí Premium',
+          description: 'Açaí 500ml + 2 acompanhamentos por apenas R$ 15,00'
+        },
+        {
+          id: '2',
+          url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400&h=300&fit=crop',
+          title: 'Combo Milk Shake',
+          description: 'Milk Shake 700ml + Açaí 300ml por R$ 25,00'
+        },
+        {
+          id: '3',
+          url: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop',
+          title: 'Oferta Especial',
+          description: 'Na compra de 2 açaís, ganhe 1 água mineral grátis'
+        },
+        {
+          id: '4',
+          url: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop',
+          title: 'Promoção Final de Semana',
+          description: '20% de desconto em todos os produtos aos sábados e domingos'
+        }
+      ];
+      setPromotionImages(defaultPromotions);
+      localStorage.setItem('acai-promotions', JSON.stringify(defaultPromotions));
+    }
+
     setProducts(siteProducts);
     setOrders(sampleOrders);
   }, []);
@@ -251,38 +295,30 @@ export default function AdminPanel() {
         
         // Mostrar notificação visual
         showNotification('Novo pedido recebido!', `Pedido #${newOrder.id} - ${newOrder.customerName}`);
-        
-        // Impressão automática se habilitada
-        if (autoPrint) {
-          setTimeout(() => printCoupon(newOrder), 1000);
-        }
       }
     }, 30000); // Verificar a cada 30 segundos
 
     return () => clearInterval(interval);
-  }, [products, soundEnabled, autoPrint]);
+  }, [products, soundEnabled]);
 
   const playNotificationSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
-      
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    } catch (error) {
-      console.log('Erro ao reproduzir som:', error);
-    }
+    // Criar um som de notificação usando Web Audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
   };
 
   const showNotification = (title: string, body: string) => {
@@ -339,9 +375,45 @@ export default function AdminPanel() {
     setEditingProduct(null);
   };
 
+  const handlePromotionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const promotionData = {
+      id: editingPromotion?.id || `promo-${Date.now()}`,
+      url: formData.get('url') as string,
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+    };
+
+    let updatedPromotions;
+    if (editingPromotion) {
+      updatedPromotions = promotionImages.map(p => p.id === editingPromotion.id ? promotionData : p);
+    } else {
+      // Limitar a 4 promoções
+      if (promotionImages.length >= 4) {
+        alert('Máximo de 4 promoções permitidas. Remova uma promoção existente primeiro.');
+        return;
+      }
+      updatedPromotions = [...promotionImages, promotionData];
+    }
+
+    setPromotionImages(updatedPromotions);
+    localStorage.setItem('acai-promotions', JSON.stringify(updatedPromotions));
+    setShowPromotionForm(false);
+    setEditingPromotion(null);
+  };
+
   const deleteProduct = (id: string) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
       setProducts(products.filter(p => p.id !== id));
+    }
+  };
+
+  const deletePromotion = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta promoção?')) {
+      const updatedPromotions = promotionImages.filter(p => p.id !== id);
+      setPromotionImages(updatedPromotions);
+      localStorage.setItem('acai-promotions', JSON.stringify(updatedPromotions));
     }
   };
 
@@ -366,22 +438,22 @@ export default function AdminPanel() {
 
   const printCoupon = (order: Order) => {
     const couponContent = `
-      <div style="width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; margin: 0; padding: 8px; color: #000;">
-        <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
-          <div style="font-size: 18px; font-weight: bold; margin-bottom: 2px;">CANTO DO AÇAÍ</div>
-          <div style="font-size: 11px;">Poço Fundo - MG</div>
-          <div style="font-size: 11px;">WhatsApp: (35) 99744-0729</div>
+      <div style="width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; margin: 0; padding: 10px;">
+        <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
+          <div style="font-size: 16px; font-weight: bold;">CANTO DO AÇAÍ</div>
+          <div style="font-size: 10px;">Poço Fundo - MG</div>
+          <div style="font-size: 10px;">WhatsApp: (35) 99744-0729</div>
         </div>
         
-        <div style="margin-bottom: 8px;">
-          <div style="font-weight: bold; font-size: 14px;">CUPOM FISCAL</div>
+        <div style="margin-bottom: 10px;">
+          <div><strong>CUPOM FISCAL</strong></div>
           <div>Pedido: #${order.id}</div>
           <div>Data: ${order.date}</div>
           <div>Hora: ${order.time}</div>
         </div>
         
-        <div style="border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
-          <div style="font-weight: bold;">CLIENTE:</div>
+        <div style="border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
+          <div><strong>CLIENTE:</strong></div>
           <div>Nome: ${order.customerName}</div>
           <div>Telefone: ${order.phone}</div>
           ${order.address ? `<div>Endereço: ${order.address}</div>` : ''}
@@ -389,38 +461,37 @@ export default function AdminPanel() {
           ${order.houseNumber ? `<div>Nº: ${order.houseNumber}</div>` : ''}
         </div>
         
-        <div style="margin-bottom: 8px;">
-          <div style="font-weight: bold;">ITENS:</div>
+        <div style="margin-bottom: 10px;">
+          <div><strong>ITENS:</strong></div>
           ${order.items.map(item => `
-            <div style="margin: 4px 0; border-bottom: 1px dotted #ccc; padding-bottom: 4px;">
-              <div style="font-weight: bold;">${item.name} ${item.size ? `(${item.size})` : ''}</div>
+            <div style="margin: 5px 0;">
+              <div>${item.name} ${item.size ? `(${item.size})` : ''}</div>
               <div>Qtd: ${item.quantity} x R$ ${item.price.toFixed(2)} = R$ ${(item.quantity * item.price).toFixed(2)}</div>
-              ${item.flavor ? `<div style="font-size: 11px;">Sabor: ${item.flavor}</div>` : ''}
-              ${item.extras?.length ? `<div style="font-size: 11px;">Extras: ${item.extras.join(', ')}</div>` : ''}
+              ${item.flavor ? `<div>Sabor: ${item.flavor}</div>` : ''}
+              ${item.extras?.length ? `<div>Extras: ${item.extras.join(', ')}</div>` : ''}
             </div>
           `).join('')}
         </div>
         
-        <div style="border-top: 2px solid #000; padding-top: 8px; margin-top: 8px;">
-          <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold;">
-            <span>TOTAL:</span>
-            <span>R$ ${order.total.toFixed(2)}</span>
+        <div style="border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span><strong>TOTAL:</strong></span>
+            <span><strong>R$ ${order.total.toFixed(2)}</strong></span>
           </div>
-          <div style="margin-top: 4px;">Pagamento: ${order.paymentMethod}</div>
+          <div>Pagamento: ${order.paymentMethod}</div>
           ${order.cashAmount ? `<div>Valor Pago: R$ ${order.cashAmount.toFixed(2)}</div>` : ''}
           ${order.cashAmount ? `<div>Troco: R$ ${(order.cashAmount - order.total).toFixed(2)}</div>` : ''}
         </div>
         
-        <div style="text-align: center; margin-top: 12px; font-size: 11px; border-top: 1px dashed #000; padding-top: 8px;">
-          <div style="font-weight: bold;">Obrigado pela preferência!</div>
+        <div style="text-align: center; margin-top: 15px; font-size: 10px;">
+          <div>Obrigado pela preferência!</div>
           <div>Status: ${order.status.toUpperCase()}</div>
-          <div style="margin-top: 4px;">www.cantodoacai.com.br</div>
         </div>
       </div>
     `;
 
     // Abrir janela de impressão formatada para papel térmico 80mm
-    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
         <html>
@@ -436,33 +507,20 @@ export default function AdminPanel() {
                 padding: 0;
                 font-family: 'Courier New', monospace;
                 font-size: 12px;
-                line-height: 1.4;
-                width: 80mm;
+                line-height: 1.2;
               }
               @media print {
                 body {
                   width: 80mm;
-                }
-                .no-print {
-                  display: none;
                 }
               }
             </style>
           </head>
           <body>
             ${couponContent}
-            <div class="no-print" style="text-align: center; margin-top: 20px;">
-              <button onclick="window.print()" style="background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
-                Imprimir Cupom
-              </button>
-              <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-left: 10px;">
-                Fechar
-              </button>
-            </div>
             <script>
-              // Auto-print após 1 segundo se for impressão automática
-              if (window.opener && window.opener.autoPrint) {
-                setTimeout(() => window.print(), 1000);
+              window.onload = function() {
+                window.print();
               }
             </script>
           </body>
@@ -516,36 +574,34 @@ export default function AdminPanel() {
       .slice(0, 5);
 
     const reportContent = `
-RELATÓRIO ${periodName.toUpperCase()} - CANTO DO AÇAÍ
-================================================
-
-Período: ${startDate.toLocaleDateString('pt-BR')} até ${now.toLocaleDateString('pt-BR')}
-
-RESUMO FINANCEIRO:
-• Total de pedidos entregues: ${totalOrders}
-• Faturamento total: R$ ${totalSales.toFixed(2)}
-• Ticket médio: R$ ${totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00'}
-
-PRODUTOS MAIS VENDIDOS:
-${topProducts.map(([product, data], index) => 
-  `${index + 1}. ${product}
-   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}`
-).join('\n')}
-
-DETALHES DOS PEDIDOS:
-${filteredOrders.map(order => 
-  `
-Pedido #${order.id} - ${order.date} ${order.time}
-Cliente: ${order.customerName}
-Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})`
-).join('')}
-
-================================================
-Relatório gerado em: ${now.toLocaleString('pt-BR')}
+      RELATÓRIO ${periodName.toUpperCase()} - CANTO DO AÇAÍ
+      ================================================
+      
+      Período: ${startDate.toLocaleDateString('pt-BR')} até ${now.toLocaleDateString('pt-BR')}
+      
+      RESUMO FINANCEIRO:
+      • Total de pedidos entregues: ${totalOrders}
+      • Faturamento total: R$ ${totalSales.toFixed(2)}
+      • Ticket médio: R$ ${totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00'}
+      
+      PRODUTOS MAIS VENDIDOS:
+      ${topProducts.map(([product, data], index) => 
+        `${index + 1}. ${product}\n   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}`
+      ).join('\n')}
+      
+      DETALHES DOS PEDIDOS:
+      ${filteredOrders.map(order => 
+        `\nPedido #${order.id} - ${order.date} ${order.time}
+        Cliente: ${order.customerName}
+        Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})`
+      ).join('')}
+      
+      ================================================
+      Relatório gerado em: ${now.toLocaleString('pt-BR')}
     `;
 
-    // Criar e baixar arquivo
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    // Criar e baixar arquivo PDF (simulado como texto)
+    const blob = new Blob([reportContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -672,6 +728,19 @@ Relatório gerado em: ${now.toLocaleString('pt-BR')}
             </button>
 
             <button
+              onClick={() => setActiveTab('promocoes')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'promocoes' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <ImageIcon size={20} />
+              <span>Promoções</span>
+              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
+                {promotionImages.length}/4
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('impressao')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'impressao' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
@@ -687,7 +756,7 @@ Relatório gerado em: ${now.toLocaleString('pt-BR')}
                 activeTab === 'relatorios' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <BarChart3 size={20} />
+              <Download size={20} />
               <span>Relatórios</span>
             </button>
 
@@ -720,6 +789,7 @@ Relatório gerado em: ${now.toLocaleString('pt-BR')}
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             {activeTab === 'pedidos' && 'Gestão de Pedidos'}
             {activeTab === 'produtos' && 'Gerenciamento de Produtos'}
+            {activeTab === 'promocoes' && 'Gerenciamento de Promoções'}
             {activeTab === 'impressao' && 'Central de Impressão'}
             {activeTab === 'relatorios' && 'Relatórios de Vendas'}
             {activeTab === 'configuracoes' && 'Configurações'}
@@ -957,6 +1027,154 @@ Relatório gerado em: ${now.toLocaleString('pt-BR')}
           </div>
         )}
 
+        {/* Aba Promoções */}
+        {activeTab === 'promocoes' && (
+          <div>
+            <div className="mb-6 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Gerenciar Promoções do Site</h2>
+                <p className="text-gray-600">Máximo de 4 promoções ativas ({promotionImages.length}/4)</p>
+              </div>
+              {promotionImages.length < 4 && (
+                <button
+                  onClick={() => setShowPromotionForm(true)}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus size={20} />
+                  <span>Adicionar Promoção</span>
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {promotionImages.map((promotion) => (
+                <div key={promotion.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <div className="relative">
+                    <img
+                      src={promotion.url}
+                      alt={promotion.title}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
+                      PROMOÇÃO
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-gray-800 mb-2">{promotion.title}</h3>
+                    <p className="text-gray-600 text-sm mb-4">{promotion.description}</p>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {
+                          setEditingPromotion(promotion);
+                          setShowPromotionForm(true);
+                        }}
+                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
+                      >
+                        <Edit size={16} />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        onClick={() => deletePromotion(promotion.id)}
+                        className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-1"
+                      >
+                        <Trash2 size={16} />
+                        <span>Remover</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {promotionImages.length === 0 && (
+              <div className="text-center py-12">
+                <ImageIcon size={64} className="mx-auto text-gray-300 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">Nenhuma promoção cadastrada</h3>
+                <p className="text-gray-500 mb-6">Adicione até 4 promoções para exibir no site</p>
+                <button
+                  onClick={() => setShowPromotionForm(true)}
+                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Adicionar Primeira Promoção
+                </button>
+              </div>
+            )}
+
+            {/* Modal de Promoção */}
+            {showPromotionForm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-semibold mb-4">
+                    {editingPromotion ? 'Editar Promoção' : 'Adicionar Promoção'}
+                  </h3>
+                  <form onSubmit={handlePromotionSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        URL da Imagem
+                      </label>
+                      <input
+                        name="url"
+                        type="url"
+                        placeholder="https://exemplo.com/imagem.jpg"
+                        defaultValue={editingPromotion?.url}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Use URLs de imagens públicas (Unsplash, Pexels, etc.)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Título da Promoção
+                      </label>
+                      <input
+                        name="title"
+                        type="text"
+                        placeholder="Ex: Promoção Açaí Premium"
+                        defaultValue={editingPromotion?.title}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Descrição da Promoção
+                      </label>
+                      <textarea
+                        name="description"
+                        placeholder="Ex: Açaí 500ml + 2 acompanhamentos por apenas R$ 15,00"
+                        defaultValue={editingPromotion?.description}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        type="submit"
+                        className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        {editingPromotion ? 'Atualizar' : 'Adicionar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPromotionForm(false);
+                          setEditingPromotion(null);
+                        }}
+                        className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Aba Impressão */}
         {activeTab === 'impressao' && (
           <div className="space-y-6">
@@ -985,13 +1203,7 @@ Relatório gerado em: ${now.toLocaleString('pt-BR')}
                   </select>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="auto-print" 
-                    className="rounded" 
-                    checked={autoPrint}
-                    onChange={(e) => setAutoPrint(e.target.checked)}
-                  />
+                  <input type="checkbox" id="auto-print" className="rounded" />
                   <label htmlFor="auto-print" className="text-sm text-gray-700">
                     Impressão automática de cupons ao receber pedido
                   </label>
