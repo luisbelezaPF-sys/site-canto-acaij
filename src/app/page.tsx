@@ -591,32 +591,18 @@ export default function Home() {
                 )}
               </button>
               
-              {/* Botão de Relatórios com Autenticação */}
+              {/* Botão de Painel Administrativo */}
               <div className="relative">
-                <button
-                  onClick={openReports}
-                  className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-all duration-300"
-                  title="Relatórios de Vendas (Admin)"
+                <a
+                  href="/admin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-all duration-300 inline-flex items-center justify-center"
+                  title="Painel Administrativo"
                 >
-                  {isAuthenticated ? <FileText size={24} /> : <Lock size={24} />}
-                </button>
-                
-                {/* Indicador de Admin Logado */}
-                {isAuthenticated && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                )}
+                  <Lock size={24} />
+                </a>
               </div>
-
-              {/* Botão de Logout (apenas se autenticado) */}
-              {isAuthenticated && (
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-all duration-300"
-                  title="Sair (Admin)"
-                >
-                  <LogOut size={24} />
-                </button>
-              )}
 
               <nav className="hidden md:flex space-x-6">
                 {['inicio', 'acai', 'milkshake', 'como-pedir', 'contato'].map((section) => (
