@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff } from 'lucide-react';
+import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, BarChart3 } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -49,6 +49,7 @@ export default function AdminPanel() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [autoPrint, setAutoPrint] = useState(false);
 
   // Dados iniciais de produtos do site
   useEffect(() => {
@@ -250,30 +251,38 @@ export default function AdminPanel() {
         
         // Mostrar notificação visual
         showNotification('Novo pedido recebido!', `Pedido #${newOrder.id} - ${newOrder.customerName}`);
+        
+        // Impressão automática se habilitada
+        if (autoPrint) {
+          setTimeout(() => printCoupon(newOrder), 1000);
+        }
       }
     }, 30000); // Verificar a cada 30 segundos
 
     return () => clearInterval(interval);
-  }, [products, soundEnabled]);
+  }, [products, soundEnabled, autoPrint]);
 
   const playNotificationSound = () => {
-    // Criar um som de notificação usando Web Audio API
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.log('Erro ao reproduzir som:', error);
+    }
   };
 
   const showNotification = (title: string, body: string) => {
@@ -357,22 +366,22 @@ export default function AdminPanel() {
 
   const printCoupon = (order: Order) => {
     const couponContent = `
-      <div style="width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; margin: 0; padding: 10px;">
-        <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
-          <div style="font-size: 16px; font-weight: bold;">CANTO DO AÇAÍ</div>
-          <div style="font-size: 10px;">Poço Fundo - MG</div>
-          <div style="font-size: 10px;">WhatsApp: (35) 99744-0729</div>
+      <div style="width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; margin: 0; padding: 8px; color: #000;">
+        <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 2px;">CANTO DO AÇAÍ</div>
+          <div style="font-size: 11px;">Poço Fundo - MG</div>
+          <div style="font-size: 11px;">WhatsApp: (35) 99744-0729</div>
         </div>
         
-        <div style="margin-bottom: 10px;">
-          <div><strong>CUPOM FISCAL</strong></div>
+        <div style="margin-bottom: 8px;">
+          <div style="font-weight: bold; font-size: 14px;">CUPOM FISCAL</div>
           <div>Pedido: #${order.id}</div>
           <div>Data: ${order.date}</div>
           <div>Hora: ${order.time}</div>
         </div>
         
-        <div style="border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
-          <div><strong>CLIENTE:</strong></div>
+        <div style="border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
+          <div style="font-weight: bold;">CLIENTE:</div>
           <div>Nome: ${order.customerName}</div>
           <div>Telefone: ${order.phone}</div>
           ${order.address ? `<div>Endereço: ${order.address}</div>` : ''}
@@ -380,37 +389,38 @@ export default function AdminPanel() {
           ${order.houseNumber ? `<div>Nº: ${order.houseNumber}</div>` : ''}
         </div>
         
-        <div style="margin-bottom: 10px;">
-          <div><strong>ITENS:</strong></div>
+        <div style="margin-bottom: 8px;">
+          <div style="font-weight: bold;">ITENS:</div>
           ${order.items.map(item => `
-            <div style="margin: 5px 0;">
-              <div>${item.name} ${item.size ? `(${item.size})` : ''}</div>
+            <div style="margin: 4px 0; border-bottom: 1px dotted #ccc; padding-bottom: 4px;">
+              <div style="font-weight: bold;">${item.name} ${item.size ? `(${item.size})` : ''}</div>
               <div>Qtd: ${item.quantity} x R$ ${item.price.toFixed(2)} = R$ ${(item.quantity * item.price).toFixed(2)}</div>
-              ${item.flavor ? `<div>Sabor: ${item.flavor}</div>` : ''}
-              ${item.extras?.length ? `<div>Extras: ${item.extras.join(', ')}</div>` : ''}
+              ${item.flavor ? `<div style="font-size: 11px;">Sabor: ${item.flavor}</div>` : ''}
+              ${item.extras?.length ? `<div style="font-size: 11px;">Extras: ${item.extras.join(', ')}</div>` : ''}
             </div>
           `).join('')}
         </div>
         
-        <div style="border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px;">
-          <div style="display: flex; justify-content: space-between;">
-            <span><strong>TOTAL:</strong></span>
-            <span><strong>R$ ${order.total.toFixed(2)}</strong></span>
+        <div style="border-top: 2px solid #000; padding-top: 8px; margin-top: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold;">
+            <span>TOTAL:</span>
+            <span>R$ ${order.total.toFixed(2)}</span>
           </div>
-          <div>Pagamento: ${order.paymentMethod}</div>
+          <div style="margin-top: 4px;">Pagamento: ${order.paymentMethod}</div>
           ${order.cashAmount ? `<div>Valor Pago: R$ ${order.cashAmount.toFixed(2)}</div>` : ''}
           ${order.cashAmount ? `<div>Troco: R$ ${(order.cashAmount - order.total).toFixed(2)}</div>` : ''}
         </div>
         
-        <div style="text-align: center; margin-top: 15px; font-size: 10px;">
-          <div>Obrigado pela preferência!</div>
+        <div style="text-align: center; margin-top: 12px; font-size: 11px; border-top: 1px dashed #000; padding-top: 8px;">
+          <div style="font-weight: bold;">Obrigado pela preferência!</div>
           <div>Status: ${order.status.toUpperCase()}</div>
+          <div style="margin-top: 4px;">www.cantodoacai.com.br</div>
         </div>
       </div>
     `;
 
     // Abrir janela de impressão formatada para papel térmico 80mm
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'width=300,height=600');
     if (printWindow) {
       printWindow.document.write(`
         <html>
@@ -426,20 +436,33 @@ export default function AdminPanel() {
                 padding: 0;
                 font-family: 'Courier New', monospace;
                 font-size: 12px;
-                line-height: 1.2;
+                line-height: 1.4;
+                width: 80mm;
               }
               @media print {
                 body {
                   width: 80mm;
+                }
+                .no-print {
+                  display: none;
                 }
               }
             </style>
           </head>
           <body>
             ${couponContent}
+            <div class="no-print" style="text-align: center; margin-top: 20px;">
+              <button onclick="window.print()" style="background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                Imprimir Cupom
+              </button>
+              <button onclick="window.close()" style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+                Fechar
+              </button>
+            </div>
             <script>
-              window.onload = function() {
-                window.print();
+              // Auto-print após 1 segundo se for impressão automática
+              if (window.opener && window.opener.autoPrint) {
+                setTimeout(() => window.print(), 1000);
               }
             </script>
           </body>
@@ -493,34 +516,36 @@ export default function AdminPanel() {
       .slice(0, 5);
 
     const reportContent = `
-      RELATÓRIO ${periodName.toUpperCase()} - CANTO DO AÇAÍ
-      ================================================
-      
-      Período: ${startDate.toLocaleDateString('pt-BR')} até ${now.toLocaleDateString('pt-BR')}
-      
-      RESUMO FINANCEIRO:
-      • Total de pedidos entregues: ${totalOrders}
-      • Faturamento total: R$ ${totalSales.toFixed(2)}
-      • Ticket médio: R$ ${totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00'}
-      
-      PRODUTOS MAIS VENDIDOS:
-      ${topProducts.map(([product, data], index) => 
-        `${index + 1}. ${product}\n   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}`
-      ).join('\n')}
-      
-      DETALHES DOS PEDIDOS:
-      ${filteredOrders.map(order => 
-        `\nPedido #${order.id} - ${order.date} ${order.time}
-        Cliente: ${order.customerName}
-        Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})`
-      ).join('')}
-      
-      ================================================
-      Relatório gerado em: ${now.toLocaleString('pt-BR')}
+RELATÓRIO ${periodName.toUpperCase()} - CANTO DO AÇAÍ
+================================================
+
+Período: ${startDate.toLocaleDateString('pt-BR')} até ${now.toLocaleDateString('pt-BR')}
+
+RESUMO FINANCEIRO:
+• Total de pedidos entregues: ${totalOrders}
+• Faturamento total: R$ ${totalSales.toFixed(2)}
+• Ticket médio: R$ ${totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00'}
+
+PRODUTOS MAIS VENDIDOS:
+${topProducts.map(([product, data], index) => 
+  `${index + 1}. ${product}
+   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}`
+).join('\n')}
+
+DETALHES DOS PEDIDOS:
+${filteredOrders.map(order => 
+  `
+Pedido #${order.id} - ${order.date} ${order.time}
+Cliente: ${order.customerName}
+Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})`
+).join('')}
+
+================================================
+Relatório gerado em: ${now.toLocaleString('pt-BR')}
     `;
 
-    // Criar e baixar arquivo PDF (simulado como texto)
-    const blob = new Blob([reportContent], { type: 'text/plain' });
+    // Criar e baixar arquivo
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -662,7 +687,7 @@ export default function AdminPanel() {
                 activeTab === 'relatorios' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <Download size={20} />
+              <BarChart3 size={20} />
               <span>Relatórios</span>
             </button>
 
@@ -960,7 +985,13 @@ export default function AdminPanel() {
                   </select>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="auto-print" className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    id="auto-print" 
+                    className="rounded" 
+                    checked={autoPrint}
+                    onChange={(e) => setAutoPrint(e.target.checked)}
+                  />
                   <label htmlFor="auto-print" className="text-sm text-gray-700">
                     Impressão automática de cupons ao receber pedido
                   </label>
