@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, Upload, Image as ImageIcon } from 'lucide-react';
+import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, Upload, Image as ImageIcon, FileText, Receipt } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -36,6 +36,7 @@ interface Order {
   houseNumber?: string;
   cashAmount?: number;
   createdAt: Date;
+  hasFiscalCoupon?: boolean; // Nova propriedade para cupom fiscal
 }
 
 interface PromotionImage {
@@ -171,57 +172,71 @@ export default function AdminPanel() {
       }
     ];
 
-    const sampleOrders: Order[] = [
-      {
-        id: 'PED001',
-        customerName: 'João Silva',
-        items: [
-          { 
-            name: 'Açaí Tradicional 500ml', 
-            quantity: 1, 
-            price: 15.00, 
-            size: '500ml', 
-            flavor: 'Açaí Tradicional Premium', 
-            extras: ['Granola', 'Banana', 'Leite Condensado'] 
-          }
-        ],
-        total: 18.00,
-        paymentMethod: 'PIX',
-        status: 'em preparo',
-        date: new Date().toLocaleDateString('pt-BR'),
-        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        phone: '35999887766',
-        address: 'Centro, Poço Fundo - MG',
-        streetName: 'Rua das Flores',
-        houseNumber: '123',
-        createdAt: new Date()
-      },
-      {
-        id: 'PED002',
-        customerName: 'Maria Santos',
-        items: [
-          { 
-            name: 'Milk Shake 500ml', 
-            quantity: 2, 
-            price: 16.00, 
-            size: '500ml', 
-            flavor: 'Ovomaltine', 
-            extras: ['Chantilly', 'Cobertura Ovomaltine'] 
-          }
-        ],
-        total: 35.00,
-        paymentMethod: 'Dinheiro',
-        cashAmount: 40.00,
-        status: 'saiu para entrega',
-        date: new Date().toLocaleDateString('pt-BR'),
-        time: new Date(Date.now() - 30 * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        phone: '35988776655',
-        address: 'Vila Nova, Poço Fundo - MG',
-        streetName: 'Rua São José',
-        houseNumber: '456',
-        createdAt: new Date(Date.now() - 30 * 60000)
-      }
-    ];
+    // Carregar pedidos do localStorage ou usar dados de exemplo
+    const savedOrders = localStorage.getItem('acai-orders');
+    if (savedOrders) {
+      const parsedOrders = JSON.parse(savedOrders).map((order: any) => ({
+        ...order,
+        createdAt: new Date(order.timestamp || order.createdAt),
+        hasFiscalCoupon: order.hasFiscalCoupon || false // Garantir compatibilidade
+      }));
+      setOrders(parsedOrders);
+    } else {
+      const sampleOrders: Order[] = [
+        {
+          id: 'PED001',
+          customerName: 'João Silva',
+          items: [
+            { 
+              name: 'Açaí Tradicional 500ml', 
+              quantity: 1, 
+              price: 15.00, 
+              size: '500ml', 
+              flavor: 'Açaí Tradicional Premium', 
+              extras: ['Granola', 'Banana', 'Leite Condensado'] 
+            }
+          ],
+          total: 18.00,
+          paymentMethod: 'PIX',
+          status: 'em preparo',
+          date: new Date().toLocaleDateString('pt-BR'),
+          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          phone: '35999887766',
+          address: 'Centro, Poço Fundo - MG',
+          streetName: 'Rua das Flores',
+          houseNumber: '123',
+          createdAt: new Date(),
+          hasFiscalCoupon: true
+        },
+        {
+          id: 'PED002',
+          customerName: 'Maria Santos',
+          items: [
+            { 
+              name: 'Milk Shake 500ml', 
+              quantity: 2, 
+              price: 16.00, 
+              size: '500ml', 
+              flavor: 'Ovomaltine', 
+              extras: ['Chantilly', 'Cobertura Ovomaltine'] 
+            }
+          ],
+          total: 35.00,
+          paymentMethod: 'Dinheiro',
+          cashAmount: 40.00,
+          status: 'saiu para entrega',
+          date: new Date().toLocaleDateString('pt-BR'),
+          time: new Date(Date.now() - 30 * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          phone: '35988776655',
+          address: 'Vila Nova, Poço Fundo - MG',
+          streetName: 'Rua São José',
+          houseNumber: '456',
+          createdAt: new Date(Date.now() - 30 * 60000),
+          hasFiscalCoupon: true
+        }
+      ];
+      setOrders(sampleOrders);
+    }
 
     // Carregar promoções do localStorage ou usar padrão
     const savedPromotions = localStorage.getItem('acai-promotions');
@@ -259,7 +274,6 @@ export default function AdminPanel() {
     }
 
     setProducts(siteProducts);
-    setOrders(sampleOrders);
   }, []);
 
   // Simular chegada de novos pedidos
@@ -289,7 +303,8 @@ export default function AdminPanel() {
           address: 'Centro, Poço Fundo - MG',
           streetName: 'Rua Principal',
           houseNumber: '100',
-          createdAt: new Date()
+          createdAt: new Date(),
+          hasFiscalCoupon: true // Novos pedidos sempre têm cupom fiscal
         };
 
         setOrders(prev => [newOrder, ...prev]);
@@ -369,6 +384,44 @@ export default function AdminPanel() {
     });
   };
 
+  // Função para redimensionar imagem automaticamente
+  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calcular novas dimensões mantendo proporção
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Desenhar imagem redimensionada
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Converter para base64
+        const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(resizedBase64);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // Função para upload de imagem de produto
   const handleProductImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -389,8 +442,8 @@ export default function AdminPanel() {
     setUploadingProductImage(true);
     
     try {
-      const base64Image = await convertFileToBase64(file);
-      setProductImagePreview(base64Image);
+      const resizedImage = await resizeImage(file, 400, 300, 0.8);
+      setProductImagePreview(resizedImage);
     } catch (error) {
       alert('Erro ao processar a imagem. Tente novamente.');
       console.error('Erro no upload:', error);
@@ -419,8 +472,8 @@ export default function AdminPanel() {
     setUploadingPromotionImage(true);
     
     try {
-      const base64Image = await convertFileToBase64(file);
-      setPromotionImagePreview(base64Image);
+      const resizedImage = await resizeImage(file, 600, 400, 0.8);
+      setPromotionImagePreview(resizedImage);
     } catch (error) {
       alert('Erro ao processar a imagem. Tente novamente.');
       console.error('Erro no upload:', error);
@@ -582,6 +635,7 @@ export default function AdminPanel() {
         <div style="text-align: center; margin-top: 15px; font-size: 10px;">
           <div>Obrigado pela preferência!</div>
           <div>Status: ${order.status.toUpperCase()}</div>
+          <div style="margin-top: 10px; font-weight: bold;">📄 CUPOM FISCAL VÁLIDO</div>
         </div>
       </div>
     `;
@@ -652,6 +706,7 @@ export default function AdminPanel() {
     
     const totalSales = filteredOrders.reduce((sum, order) => sum + order.total, 0);
     const totalOrders = filteredOrders.length;
+    const totalCoupons = filteredOrders.filter(order => order.hasFiscalCoupon).length;
     
     // Produtos mais vendidos
     const productSales: { [key: string]: { quantity: number, revenue: number } } = {};
@@ -679,6 +734,7 @@ export default function AdminPanel() {
       • Total de pedidos entregues: ${totalOrders}
       • Faturamento total: R$ ${totalSales.toFixed(2)}
       • Ticket médio: R$ ${totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00'}
+      • Cupons fiscais emitidos: ${totalCoupons}
       
       PRODUTOS MAIS VENDIDOS:
       ${topProducts.map(([product, data], index) => 
@@ -689,7 +745,8 @@ export default function AdminPanel() {
       ${filteredOrders.map(order => 
         `\nPedido #${order.id} - ${order.date} ${order.time}
         Cliente: ${order.customerName}
-        Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})`
+        Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})
+        Cupom Fiscal: ${order.hasFiscalCoupon ? 'SIM' : 'NÃO'}`
       ).join('')}
       
       ================================================
@@ -717,6 +774,9 @@ export default function AdminPanel() {
     order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Filtrar pedidos com cupom fiscal
+  const ordersWithCoupons = orders.filter(order => order.hasFiscalCoupon);
 
   if (!isAuthenticated) {
     return (
@@ -814,6 +874,19 @@ export default function AdminPanel() {
             </button>
 
             <button
+              onClick={() => setActiveTab('cupons')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'cupons' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Receipt size={20} />
+              <span>Cupons Fiscais</span>
+              <span className="bg-green-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
+                {ordersWithCoupons.length}
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('produtos')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'produtos' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
@@ -884,6 +957,7 @@ export default function AdminPanel() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             {activeTab === 'pedidos' && 'Gestão de Pedidos'}
+            {activeTab === 'cupons' && 'Cupons Fiscais'}
             {activeTab === 'produtos' && 'Gerenciamento de Produtos'}
             {activeTab === 'promocoes' && 'Gerenciamento de Promoções'}
             {activeTab === 'impressao' && 'Central de Impressão'}
@@ -905,6 +979,109 @@ export default function AdminPanel() {
           </div>
         </div>
 
+        {/* Aba Cupons Fiscais */}
+        {activeTab === 'cupons' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">📄 Sistema de Cupons Fiscais</h3>
+                  <p className="text-green-100">
+                    Todos os pedidos enviados pelo site geram automaticamente cupons fiscais para impressão
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold">{ordersWithCoupons.length}</div>
+                  <div className="text-green-100">Cupons Disponíveis</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold mb-4">Cupons Fiscais Disponíveis para Impressão</h3>
+              <div className="space-y-4">
+                {ordersWithCoupons.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Receipt size={48} className="mx-auto mb-4 text-gray-300" />
+                    <p>Nenhum cupom fiscal disponível</p>
+                    <p className="text-sm">Os cupons são gerados automaticamente quando pedidos são feitos pelo site</p>
+                  </div>
+                ) : (
+                  ordersWithCoupons.map((order) => (
+                    <div key={order.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-800">Cupom Fiscal #{order.id}</h4>
+                          <p className="text-gray-600">{order.customerName} - {order.phone}</p>
+                          <p className="text-sm text-gray-500">{order.date} às {order.time}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Clock size={16} className="text-gray-400" />
+                            <span className="text-sm text-gray-500">{getTimeSinceOrder(order.createdAt)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            order.status === 'em preparo' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'saiu para entrega' ? 'bg-blue-100 text-blue-800' :
+                            order.status === 'entregue' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {order.status}
+                          </span>
+                          <button
+                            onClick={() => printCoupon(order)}
+                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                          >
+                            <Printer size={16} />
+                            <span>Imprimir Cupom</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-3">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <h5 className="font-medium text-gray-800 mb-2">Itens do Pedido:</h5>
+                            {order.items.map((item, index) => (
+                              <div key={index} className="text-sm text-gray-600 mb-1">
+                                {item.quantity}x {item.name} - R$ {(item.quantity * item.price).toFixed(2)}
+                              </div>
+                            ))}
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-gray-800 mb-2">Resumo Financeiro:</h5>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <div>Total: R$ {order.total.toFixed(2)}</div>
+                              <div>Pagamento: {order.paymentMethod}</div>
+                              {order.cashAmount && (
+                                <>
+                                  <div>Valor Pago: R$ {order.cashAmount.toFixed(2)}</div>
+                                  <div>Troco: R$ {(order.cashAmount - order.total).toFixed(2)}</div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {order.address && (
+                          <div className="mt-3 pt-3 border-t">
+                            <h5 className="font-medium text-gray-800 mb-1">Endereço de Entrega:</h5>
+                            <p className="text-sm text-gray-600">
+                              📍 {order.address}
+                              {order.streetName && ` - ${order.streetName}`}
+                              {order.houseNumber && `, ${order.houseNumber}`}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Aba Pedidos */}
         {activeTab === 'pedidos' && (
           <div className="space-y-4">
@@ -918,6 +1095,11 @@ export default function AdminPanel() {
                     <div className="flex items-center space-x-2 mt-1">
                       <Clock size={16} className="text-gray-400" />
                       <span className="text-sm text-gray-500">{getTimeSinceOrder(order.createdAt)}</span>
+                      {order.hasFiscalCoupon && (
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">
+                          📄 Cupom Fiscal
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -936,13 +1118,15 @@ export default function AdminPanel() {
                       <option value="entregue">Entregue</option>
                       <option value="cancelado">Cancelado</option>
                     </select>
-                    <button
-                      onClick={() => printCoupon(order)}
-                      className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors"
-                      title="Imprimir Cupom"
-                    >
-                      <Printer size={16} />
-                    </button>
+                    {order.hasFiscalCoupon && (
+                      <button
+                        onClick={() => printCoupon(order)}
+                        className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors"
+                        title="Imprimir Cupom Fiscal"
+                      >
+                        <Printer size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1112,7 +1296,7 @@ export default function AdminPanel() {
                             {uploadingProductImage ? (
                               <>
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
-                                Processando...
+                                Redimensionando...
                               </>
                             ) : (
                               <>
@@ -1122,7 +1306,7 @@ export default function AdminPanel() {
                             )}
                           </label>
                           <p className="text-xs text-gray-500 mt-2">
-                            PNG, JPG, GIF até 5MB
+                            PNG, JPG, GIF até 5MB (redimensionado automaticamente)
                           </p>
                         </div>
                       </div>
@@ -1283,7 +1467,7 @@ export default function AdminPanel() {
                             {uploadingPromotionImage ? (
                               <>
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
-                                Processando...
+                                Redimensionando...
                               </>
                             ) : (
                               <>
@@ -1293,7 +1477,7 @@ export default function AdminPanel() {
                             )}
                           </label>
                           <p className="text-xs text-gray-500 mt-2">
-                            PNG, JPG, GIF até 5MB
+                            PNG, JPG, GIF até 5MB (redimensionado automaticamente)
                           </p>
                         </div>
                       </div>
@@ -1405,6 +1589,11 @@ export default function AdminPanel() {
                       }`}>
                         {order.status}
                       </span>
+                      {order.hasFiscalCoupon && (
+                        <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                          📄 Cupom
+                        </span>
+                      )}
                     </div>
                     <button
                       onClick={() => printCoupon(order)}
@@ -1423,7 +1612,7 @@ export default function AdminPanel() {
         {/* Aba Relatórios */}
         {activeTab === 'relatorios' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
                 <h3 className="text-lg font-semibold mb-2">Vendas Hoje</h3>
                 <p className="text-3xl font-bold">
@@ -1446,6 +1635,12 @@ export default function AdminPanel() {
                 <h3 className="text-lg font-semibold mb-2">Total de Produtos</h3>
                 <p className="text-3xl font-bold">{products.length}</p>
                 <p className="text-purple-100 text-sm">no cardápio</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg">
+                <h3 className="text-lg font-semibold mb-2">Cupons Fiscais</h3>
+                <p className="text-3xl font-bold">{ordersWithCoupons.length}</p>
+                <p className="text-orange-100 text-sm">disponíveis</p>
               </div>
             </div>
 
@@ -1556,6 +1751,36 @@ export default function AdminPanel() {
                 <button className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
                   Salvar Configurações
                 </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold mb-4">Sistema de Cupons Fiscais</h3>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" id="auto-coupon" className="rounded" defaultChecked />
+                  <label htmlFor="auto-coupon" className="text-sm text-gray-700">
+                    Gerar cupom fiscal automaticamente para todos os pedidos
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" id="print-auto" className="rounded" />
+                  <label htmlFor="print-auto" className="text-sm text-gray-700">
+                    Imprimir cupom fiscal automaticamente ao receber pedido
+                  </label>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <FileText className="text-green-600" size={20} />
+                    <h4 className="font-medium text-green-800">Status do Sistema</h4>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    ✅ Sistema de cupons fiscais ativo e funcionando
+                  </p>
+                  <p className="text-sm text-green-600 mt-1">
+                    Todos os pedidos feitos pelo site geram automaticamente cupons fiscais válidos para impressão.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

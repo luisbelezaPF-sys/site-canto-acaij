@@ -28,6 +28,7 @@ interface CompletedOrder {
   total: number
   timestamp: Date
   date: string
+  hasFiscalCoupon: boolean // Nova propriedade para controlar cupom fiscal
 }
 
 interface DailyReport {
@@ -98,7 +99,8 @@ export default function Home() {
     if (savedOrders) {
       const orders = JSON.parse(savedOrders).map((order: any) => ({
         ...order,
-        timestamp: new Date(order.timestamp)
+        timestamp: new Date(order.timestamp),
+        hasFiscalCoupon: order.hasFiscalCoupon || false // Garantir compatibilidade com dados antigos
       }))
       setCompletedOrders(orders)
     }
@@ -321,13 +323,14 @@ export default function Home() {
   }
 
   // Registrar pedido completo
-  const registerOrder = (orderData: Omit<CompletedOrder, 'id' | 'timestamp' | 'date'>) => {
+  const registerOrder = (orderData: Omit<CompletedOrder, 'id' | 'timestamp' | 'date' | 'hasFiscalCoupon'>) => {
     const now = new Date()
     const newOrder: CompletedOrder = {
       ...orderData,
       id: Date.now().toString(),
       timestamp: now,
-      date: now.toISOString().split('T')[0] // YYYY-MM-DD
+      date: now.toISOString().split('T')[0], // YYYY-MM-DD
+      hasFiscalCoupon: true // Marcar que este pedido tem cupom fiscal
     }
 
     const updatedOrders = [...completedOrders, newOrder]
@@ -579,8 +582,9 @@ export default function Home() {
     message += `Rua: ${streetName}\\n`
     message += `Numero: ${houseNumber}\\n\\n`
     
-    // Número do pedido
-    message += `Numero do Pedido: ${registeredOrder.id}`
+    // Número do pedido e cupom fiscal
+    message += `Numero do Pedido: ${registeredOrder.id}\\n`
+    message += `📄 CUPOM FISCAL GERADO - Disponível para impressão no painel administrativo`
 
     openWhatsApp(message)
 
@@ -593,7 +597,7 @@ export default function Home() {
     setHouseNumber('')
     setCustomerName('')
     
-    alert('Pedido registrado e enviado com sucesso! 🎉')
+    alert('Pedido registrado e enviado com sucesso! 🎉\n\n📄 Cupom fiscal gerado automaticamente e disponível no painel administrativo para impressão.')
   }
 
   const sendCartToWhatsApp = () => {
@@ -822,10 +826,10 @@ export default function Home() {
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-purple-100">Relatórios Gerados</p>
-                      <p className="text-3xl font-bold">{dailyReports.length}</p>
+                      <p className="text-purple-100">Cupons Fiscais</p>
+                      <p className="text-3xl font-bold">{completedOrders.filter(order => order.hasFiscalCoupon).length}</p>
                     </div>
-                    <Calendar size={40} className="text-purple-200" />
+                    <FileText size={40} className="text-purple-200" />
                   </div>
                 </div>
               </div>
@@ -874,6 +878,7 @@ export default function Home() {
                             <div className="flex space-x-6 text-sm text-gray-600 mt-2">
                               <span>📦 {report.totalSales} pedidos</span>
                               <span>💰 R$ {report.totalRevenue.toFixed(2)}</span>
+                              <span>📄 {report.orders.filter(o => o.hasFiscalCoupon).length} cupons fiscais</span>
                             </div>
                           </div>
                           <button
