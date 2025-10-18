@@ -60,6 +60,12 @@ export default function AdminPanel() {
   const [searchTerm, setSearchTerm] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  // Estados para upload de imagens
+  const [uploadingProductImage, setUploadingProductImage] = useState(false);
+  const [uploadingPromotionImage, setUploadingPromotionImage] = useState(false);
+  const [productImagePreview, setProductImagePreview] = useState<string>('');
+  const [promotionImagePreview, setPromotionImagePreview] = useState<string>('');
+
   // Dados iniciais de produtos do site
   useEffect(() => {
     const siteProducts: Product[] = [
@@ -353,15 +359,94 @@ export default function AdminPanel() {
     setLoginData({ id: '', password: '' });
   };
 
+  // Função para converter arquivo para base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Função para upload de imagem de produto
+  const handleProductImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione apenas arquivos de imagem!');
+      return;
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 5MB!');
+      return;
+    }
+
+    setUploadingProductImage(true);
+    
+    try {
+      const base64Image = await convertFileToBase64(file);
+      setProductImagePreview(base64Image);
+    } catch (error) {
+      alert('Erro ao processar a imagem. Tente novamente.');
+      console.error('Erro no upload:', error);
+    } finally {
+      setUploadingProductImage(false);
+    }
+  };
+
+  // Função para upload de imagem de promoção
+  const handlePromotionImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione apenas arquivos de imagem!');
+      return;
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 5MB!');
+      return;
+    }
+
+    setUploadingPromotionImage(true);
+    
+    try {
+      const base64Image = await convertFileToBase64(file);
+      setPromotionImagePreview(base64Image);
+    } catch (error) {
+      alert('Erro ao processar a imagem. Tente novamente.');
+      console.error('Erro no upload:', error);
+    } finally {
+      setUploadingPromotionImage(false);
+    }
+  };
+
   const handleProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
+    
+    // Usar imagem uploadada ou manter a existente
+    const imageUrl = productImagePreview || editingProduct?.image || '';
+    
+    if (!imageUrl) {
+      alert('Por favor, faça upload de uma imagem para o produto!');
+      return;
+    }
+
     const productData = {
       id: editingProduct?.id || `product-${Date.now()}`,
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: parseFloat(formData.get('price') as string),
-      image: formData.get('image') as string,
+      image: imageUrl,
       category: formData.get('category') as string,
     };
 
@@ -373,14 +458,24 @@ export default function AdminPanel() {
 
     setShowProductForm(false);
     setEditingProduct(null);
+    setProductImagePreview('');
   };
 
   const handlePromotionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
+    
+    // Usar imagem uploadada ou manter a existente
+    const imageUrl = promotionImagePreview || editingPromotion?.url || '';
+    
+    if (!imageUrl) {
+      alert('Por favor, faça upload de uma imagem para a promoção!');
+      return;
+    }
+
     const promotionData = {
       id: editingPromotion?.id || `promo-${Date.now()}`,
-      url: formData.get('url') as string,
+      url: imageUrl,
       title: formData.get('title') as string,
       description: formData.get('description') as string,
     };
@@ -401,6 +496,7 @@ export default function AdminPanel() {
     localStorage.setItem('acai-promotions', JSON.stringify(updatedPromotions));
     setShowPromotionForm(false);
     setEditingPromotion(null);
+    setPromotionImagePreview('');
   };
 
   const deleteProduct = (id: string) => {
@@ -928,6 +1024,7 @@ export default function AdminPanel() {
                       <button
                         onClick={() => {
                           setEditingProduct(product);
+                          setProductImagePreview('');
                           setShowProductForm(true);
                         }}
                         className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
@@ -951,7 +1048,7 @@ export default function AdminPanel() {
             {/* Modal de Produto */}
             {showProductForm && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                   <h3 className="text-lg font-semibold mb-4">
                     {editingProduct ? 'Editar Produto' : 'Adicionar Produto'}
                   </h3>
@@ -981,14 +1078,56 @@ export default function AdminPanel() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                       required
                     />
-                    <input
-                      name="image"
-                      type="url"
-                      placeholder="URL da imagem"
-                      defaultValue={editingProduct?.image}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                      required
-                    />
+                    
+                    {/* Upload de Imagem */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Imagem do Produto
+                      </label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        {(productImagePreview || editingProduct?.image) && (
+                          <div className="mb-4">
+                            <img
+                              src={productImagePreview || editingProduct?.image}
+                              alt="Preview"
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                          </div>
+                        )}
+                        <div className="text-center">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProductImageUpload}
+                            className="hidden"
+                            id="product-image-upload"
+                            disabled={uploadingProductImage}
+                          />
+                          <label
+                            htmlFor="product-image-upload"
+                            className={`cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ${
+                              uploadingProductImage ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            {uploadingProductImage ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+                                Processando...
+                              </>
+                            ) : (
+                              <>
+                                <Upload size={16} className="mr-2" />
+                                {productImagePreview || editingProduct?.image ? 'Alterar Imagem' : 'Fazer Upload'}
+                              </>
+                            )}
+                          </label>
+                          <p className="text-xs text-gray-500 mt-2">
+                            PNG, JPG, GIF até 5MB
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <select
                       name="category"
                       defaultValue={editingProduct?.category}
@@ -1006,6 +1145,7 @@ export default function AdminPanel() {
                       <button
                         type="submit"
                         className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                        disabled={uploadingProductImage}
                       >
                         {editingProduct ? 'Atualizar' : 'Adicionar'}
                       </button>
@@ -1014,6 +1154,7 @@ export default function AdminPanel() {
                         onClick={() => {
                           setShowProductForm(false);
                           setEditingProduct(null);
+                          setProductImagePreview('');
                         }}
                         className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                       >
@@ -1066,6 +1207,7 @@ export default function AdminPanel() {
                       <button
                         onClick={() => {
                           setEditingPromotion(promotion);
+                          setPromotionImagePreview('');
                           setShowPromotionForm(true);
                         }}
                         className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
@@ -1103,27 +1245,60 @@ export default function AdminPanel() {
             {/* Modal de Promoção */}
             {showPromotionForm && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                   <h3 className="text-lg font-semibold mb-4">
                     {editingPromotion ? 'Editar Promoção' : 'Adicionar Promoção'}
                   </h3>
                   <form onSubmit={handlePromotionSubmit} className="space-y-4">
+                    {/* Upload de Imagem */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        URL da Imagem
+                        Imagem da Promoção
                       </label>
-                      <input
-                        name="url"
-                        type="url"
-                        placeholder="https://exemplo.com/imagem.jpg"
-                        defaultValue={editingPromotion?.url}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                        required
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Use URLs de imagens públicas (Unsplash, Pexels, etc.)
-                      </p>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        {(promotionImagePreview || editingPromotion?.url) && (
+                          <div className="mb-4">
+                            <img
+                              src={promotionImagePreview || editingPromotion?.url}
+                              alt="Preview"
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                          </div>
+                        )}
+                        <div className="text-center">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePromotionImageUpload}
+                            className="hidden"
+                            id="promotion-image-upload"
+                            disabled={uploadingPromotionImage}
+                          />
+                          <label
+                            htmlFor="promotion-image-upload"
+                            className={`cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ${
+                              uploadingPromotionImage ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            {uploadingPromotionImage ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+                                Processando...
+                              </>
+                            ) : (
+                              <>
+                                <Upload size={16} className="mr-2" />
+                                {promotionImagePreview || editingPromotion?.url ? 'Alterar Imagem' : 'Fazer Upload'}
+                              </>
+                            )}
+                          </label>
+                          <p className="text-xs text-gray-500 mt-2">
+                            PNG, JPG, GIF até 5MB
+                          </p>
+                        </div>
+                      </div>
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Título da Promoção
@@ -1154,6 +1329,7 @@ export default function AdminPanel() {
                       <button
                         type="submit"
                         className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                        disabled={uploadingPromotionImage}
                       >
                         {editingPromotion ? 'Atualizar' : 'Adicionar'}
                       </button>
@@ -1162,6 +1338,7 @@ export default function AdminPanel() {
                         onClick={() => {
                           setShowPromotionForm(false);
                           setEditingPromotion(null);
+                          setPromotionImagePreview('');
                         }}
                         className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                       >
