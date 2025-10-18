@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search } from 'lucide-react';
+import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -12,23 +12,30 @@ interface Product {
   category: string;
 }
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  size?: string;
+  flavor?: string;
+  extras?: string[];
+}
+
 interface Order {
   id: string;
   customerName: string;
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
-    size?: string;
-    flavor?: string;
-    extras?: string[];
-  }>;
+  items: OrderItem[];
   total: number;
   paymentMethod: string;
-  status: 'em preparo' | 'entregue' | 'cancelado';
+  status: 'em preparo' | 'saiu para entrega' | 'entregue' | 'cancelado';
   date: string;
+  time: string;
   phone: string;
   address?: string;
+  streetName?: string;
+  houseNumber?: string;
+  cashAmount?: number;
+  createdAt: Date;
 }
 
 export default function AdminPanel() {
@@ -41,25 +48,110 @@ export default function AdminPanel() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Dados iniciais de exemplo
+  // Dados iniciais de produtos do site
   useEffect(() => {
-    const sampleProducts: Product[] = [
+    const siteProducts: Product[] = [
+      // Açaí Tradicional
       {
-        id: '1',
-        name: 'Açaí 300ml',
-        description: 'Açaí cremoso tradicional',
-        price: 8.50,
+        id: 'acai-300ml',
+        name: 'Açaí Tradicional 300ml',
+        description: 'Açaí cremoso tradicional premium',
+        price: 10.00,
         image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=200&fit=crop',
-        category: 'Açaí'
+        category: 'Açaí Tradicional'
       },
       {
-        id: '2',
-        name: 'Açaí 500ml',
-        description: 'Açaí cremoso tradicional tamanho médio',
+        id: 'acai-400ml',
+        name: 'Açaí Tradicional 400ml',
+        description: 'Açaí cremoso tradicional premium',
         price: 12.00,
         image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=200&fit=crop',
-        category: 'Açaí'
+        category: 'Açaí Tradicional'
+      },
+      {
+        id: 'acai-500ml',
+        name: 'Açaí Tradicional 500ml',
+        description: 'Açaí cremoso tradicional premium',
+        price: 15.00,
+        image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=200&fit=crop',
+        category: 'Açaí Tradicional'
+      },
+      {
+        id: 'acai-700ml',
+        name: 'Açaí Tradicional 700ml',
+        description: 'Açaí cremoso tradicional premium',
+        price: 18.00,
+        image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=200&fit=crop',
+        category: 'Açaí Tradicional'
+      },
+      // Açaí Zero
+      {
+        id: 'acai-zero-300ml',
+        name: 'Açaí Zero 300ml',
+        description: 'Açaí sem açúcar adicionado',
+        price: 15.00,
+        image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=200&fit=crop',
+        category: 'Açaí Zero'
+      },
+      {
+        id: 'acai-zero-500ml',
+        name: 'Açaí Zero 500ml',
+        description: 'Açaí sem açúcar adicionado',
+        price: 21.00,
+        image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=200&fit=crop',
+        category: 'Açaí Zero'
+      },
+      {
+        id: 'acai-zero-700ml',
+        name: 'Açaí Zero 700ml',
+        description: 'Açaí sem açúcar adicionado',
+        price: 27.00,
+        image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=300&h=200&fit=crop',
+        category: 'Açaí Zero'
+      },
+      // Milk Shakes
+      {
+        id: 'milkshake-300ml',
+        name: 'Milk Shake 300ml',
+        description: 'Milk shake cremoso com chantilly',
+        price: 14.00,
+        image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=300&h=200&fit=crop',
+        category: 'Milk Shake'
+      },
+      {
+        id: 'milkshake-500ml',
+        name: 'Milk Shake 500ml',
+        description: 'Milk shake cremoso com chantilly',
+        price: 16.00,
+        image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=300&h=200&fit=crop',
+        category: 'Milk Shake'
+      },
+      {
+        id: 'milkshake-700ml',
+        name: 'Milk Shake 700ml',
+        description: 'Milk shake cremoso com chantilly',
+        price: 18.00,
+        image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=300&h=200&fit=crop',
+        category: 'Milk Shake'
+      },
+      // Bebidas
+      {
+        id: 'agua-mineral',
+        name: 'Água Mineral',
+        description: 'Água mineral gelada',
+        price: 3.00,
+        image: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=300&h=200&fit=crop',
+        category: 'Bebidas'
+      },
+      {
+        id: 'agua-gas',
+        name: 'Água com Gás',
+        description: 'Água com gás gelada',
+        price: 4.00,
+        image: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=300&h=200&fit=crop',
+        category: 'Bebidas'
       }
     ];
 
@@ -68,25 +160,144 @@ export default function AdminPanel() {
         id: 'PED001',
         customerName: 'João Silva',
         items: [
-          { name: 'Açaí 500ml', quantity: 1, price: 12.00, size: 'Médio', flavor: 'Tradicional', extras: ['Granola', 'Banana'] }
+          { 
+            name: 'Açaí Tradicional 500ml', 
+            quantity: 1, 
+            price: 15.00, 
+            size: '500ml', 
+            flavor: 'Açaí Tradicional Premium', 
+            extras: ['Granola', 'Banana', 'Leite Condensado'] 
+          }
         ],
-        total: 12.00,
+        total: 18.00,
         paymentMethod: 'PIX',
         status: 'em preparo',
-        date: new Date().toLocaleString(),
+        date: new Date().toLocaleDateString('pt-BR'),
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         phone: '35999887766',
-        address: 'Rua das Flores, 123'
+        address: 'Centro, Poço Fundo - MG',
+        streetName: 'Rua das Flores',
+        houseNumber: '123',
+        createdAt: new Date()
+      },
+      {
+        id: 'PED002',
+        customerName: 'Maria Santos',
+        items: [
+          { 
+            name: 'Milk Shake 500ml', 
+            quantity: 2, 
+            price: 16.00, 
+            size: '500ml', 
+            flavor: 'Ovomaltine', 
+            extras: ['Chantilly', 'Cobertura Ovomaltine'] 
+          }
+        ],
+        total: 35.00,
+        paymentMethod: 'Dinheiro',
+        cashAmount: 40.00,
+        status: 'saiu para entrega',
+        date: new Date().toLocaleDateString('pt-BR'),
+        time: new Date(Date.now() - 30 * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        phone: '35988776655',
+        address: 'Vila Nova, Poço Fundo - MG',
+        streetName: 'Rua São José',
+        houseNumber: '456',
+        createdAt: new Date(Date.now() - 30 * 60000)
       }
     ];
 
-    setProducts(sampleProducts);
+    setProducts(siteProducts);
     setOrders(sampleOrders);
   }, []);
+
+  // Simular chegada de novos pedidos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Simular novo pedido ocasionalmente (5% de chance a cada 30 segundos)
+      if (Math.random() < 0.05) {
+        const newOrder: Order = {
+          id: `PED${String(Date.now()).slice(-3)}`,
+          customerName: ['Ana Costa', 'Pedro Lima', 'Carla Souza', 'Roberto Alves'][Math.floor(Math.random() * 4)],
+          items: [
+            {
+              name: products[Math.floor(Math.random() * products.length)]?.name || 'Açaí 500ml',
+              quantity: Math.floor(Math.random() * 2) + 1,
+              price: 15.00,
+              size: '500ml',
+              flavor: 'Açaí Tradicional Premium',
+              extras: ['Granola', 'Banana']
+            }
+          ],
+          total: 18.00,
+          paymentMethod: ['PIX', 'Cartão', 'Dinheiro'][Math.floor(Math.random() * 3)],
+          status: 'em preparo',
+          date: new Date().toLocaleDateString('pt-BR'),
+          time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          phone: '35999000000',
+          address: 'Centro, Poço Fundo - MG',
+          streetName: 'Rua Principal',
+          houseNumber: '100',
+          createdAt: new Date()
+        };
+
+        setOrders(prev => [newOrder, ...prev]);
+        
+        // Tocar som de notificação se habilitado
+        if (soundEnabled) {
+          playNotificationSound();
+        }
+        
+        // Mostrar notificação visual
+        showNotification('Novo pedido recebido!', `Pedido #${newOrder.id} - ${newOrder.customerName}`);
+      }
+    }, 30000); // Verificar a cada 30 segundos
+
+    return () => clearInterval(interval);
+  }, [products, soundEnabled]);
+
+  const playNotificationSound = () => {
+    // Criar um som de notificação usando Web Audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  };
+
+  const showNotification = (title: string, body: string) => {
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/icon.svg' });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification(title, { body, icon: '/icon.svg' });
+          }
+        });
+      }
+    }
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (loginData.id === 'admin' && loginData.password === 'jonjon25') {
       setIsAuthenticated(true);
+      // Solicitar permissão para notificações
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
     } else {
       alert('Credenciais inválidas!');
     }
@@ -101,7 +312,7 @@ export default function AdminPanel() {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const productData = {
-      id: editingProduct?.id || Date.now().toString(),
+      id: editingProduct?.id || `product-${Date.now()}`,
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       price: parseFloat(formData.get('price') as string),
@@ -125,59 +336,112 @@ export default function AdminPanel() {
     }
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: 'em preparo' | 'entregue' | 'cancelado') => {
+  const updateOrderStatus = (orderId: string, newStatus: 'em preparo' | 'saiu para entrega' | 'entregue' | 'cancelado') => {
     setOrders(orders.map(order => 
       order.id === orderId ? { ...order, status: newStatus } : order
     ));
   };
 
+  const getTimeSinceOrder = (createdAt: Date) => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} min atrás`;
+    } else {
+      const hours = Math.floor(diffInMinutes / 60);
+      const minutes = diffInMinutes % 60;
+      return `${hours}h ${minutes}min atrás`;
+    }
+  };
+
   const printCoupon = (order: Order) => {
     const couponContent = `
-      ================================
-           CANTO DO AÇAÍ
-      ================================
-      
-      Pedido: ${order.id}
-      Data: ${order.date}
-      Cliente: ${order.customerName}
-      Telefone: ${order.phone}
-      ${order.address ? `Endereço: ${order.address}` : ''}
-      
-      --------------------------------
-      ITENS:
-      --------------------------------
-      ${order.items.map(item => `
-      ${item.name} ${item.size ? `(${item.size})` : ''}
-      Qtd: ${item.quantity} x R$ ${item.price.toFixed(2)}
-      ${item.flavor ? `Sabor: ${item.flavor}` : ''}
-      ${item.extras?.length ? `Extras: ${item.extras.join(', ')}` : ''}
-      `).join('\n')}
-      
-      --------------------------------
-      Total: R$ ${order.total.toFixed(2)}
-      Pagamento: ${order.paymentMethod}
-      Status: ${order.status.toUpperCase()}
-      
-      ================================
-      Obrigado pela preferência!
-      ================================
+      <div style="width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; margin: 0; padding: 10px;">
+        <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
+          <div style="font-size: 16px; font-weight: bold;">CANTO DO AÇAÍ</div>
+          <div style="font-size: 10px;">Poço Fundo - MG</div>
+          <div style="font-size: 10px;">WhatsApp: (35) 99744-0729</div>
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+          <div><strong>CUPOM FISCAL</strong></div>
+          <div>Pedido: #${order.id}</div>
+          <div>Data: ${order.date}</div>
+          <div>Hora: ${order.time}</div>
+        </div>
+        
+        <div style="border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
+          <div><strong>CLIENTE:</strong></div>
+          <div>Nome: ${order.customerName}</div>
+          <div>Telefone: ${order.phone}</div>
+          ${order.address ? `<div>Endereço: ${order.address}</div>` : ''}
+          ${order.streetName ? `<div>Rua: ${order.streetName}</div>` : ''}
+          ${order.houseNumber ? `<div>Nº: ${order.houseNumber}</div>` : ''}
+        </div>
+        
+        <div style="margin-bottom: 10px;">
+          <div><strong>ITENS:</strong></div>
+          ${order.items.map(item => `
+            <div style="margin: 5px 0;">
+              <div>${item.name} ${item.size ? `(${item.size})` : ''}</div>
+              <div>Qtd: ${item.quantity} x R$ ${item.price.toFixed(2)} = R$ ${(item.quantity * item.price).toFixed(2)}</div>
+              ${item.flavor ? `<div>Sabor: ${item.flavor}</div>` : ''}
+              ${item.extras?.length ? `<div>Extras: ${item.extras.join(', ')}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        
+        <div style="border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span><strong>TOTAL:</strong></span>
+            <span><strong>R$ ${order.total.toFixed(2)}</strong></span>
+          </div>
+          <div>Pagamento: ${order.paymentMethod}</div>
+          ${order.cashAmount ? `<div>Valor Pago: R$ ${order.cashAmount.toFixed(2)}</div>` : ''}
+          ${order.cashAmount ? `<div>Troco: R$ ${(order.cashAmount - order.total).toFixed(2)}</div>` : ''}
+        </div>
+        
+        <div style="text-align: center; margin-top: 15px; font-size: 10px;">
+          <div>Obrigado pela preferência!</div>
+          <div>Status: ${order.status.toUpperCase()}</div>
+        </div>
+      </div>
     `;
 
-    // Simular impressão (em produção, integraria com API da impressora)
+    // Abrir janela de impressão formatada para papel térmico 80mm
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Cupom - ${order.id}</title>
+            <title>Cupom Fiscal - ${order.id}</title>
             <style>
-              body { font-family: monospace; font-size: 12px; margin: 0; padding: 20px; }
-              pre { white-space: pre-wrap; }
+              @page {
+                size: 80mm auto;
+                margin: 0;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                line-height: 1.2;
+              }
+              @media print {
+                body {
+                  width: 80mm;
+                }
+              }
             </style>
           </head>
           <body>
-            <pre>${couponContent}</pre>
-            <script>window.print(); window.close();</script>
+            ${couponContent}
+            <script>
+              window.onload = function() {
+                window.print();
+              }
+            </script>
           </body>
         </html>
       `);
@@ -185,14 +449,86 @@ export default function AdminPanel() {
     }
   };
 
-  const generateSalesReport = () => {
-    const today = new Date().toLocaleDateString();
-    const todayOrders = orders.filter(order => 
-      order.date.includes(today) && order.status === 'entregue'
+  const generateSalesReport = (period: 'daily' | 'weekly' | 'monthly') => {
+    const now = new Date();
+    let startDate: Date;
+    let periodName: string;
+
+    switch (period) {
+      case 'daily':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        periodName = 'Diário';
+        break;
+      case 'weekly':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        periodName = 'Semanal';
+        break;
+      case 'monthly':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodName = 'Mensal';
+        break;
+    }
+
+    const filteredOrders = orders.filter(order => 
+      order.createdAt >= startDate && order.status === 'entregue'
     );
-    const totalSales = todayOrders.reduce((sum, order) => sum + order.total, 0);
     
-    alert(`Relatório de Vendas - ${today}\n\nPedidos entregues: ${todayOrders.length}\nTotal de vendas: R$ ${totalSales.toFixed(2)}`);
+    const totalSales = filteredOrders.reduce((sum, order) => sum + order.total, 0);
+    const totalOrders = filteredOrders.length;
+    
+    // Produtos mais vendidos
+    const productSales: { [key: string]: { quantity: number, revenue: number } } = {};
+    filteredOrders.forEach(order => {
+      order.items.forEach(item => {
+        if (!productSales[item.name]) {
+          productSales[item.name] = { quantity: 0, revenue: 0 };
+        }
+        productSales[item.name].quantity += item.quantity;
+        productSales[item.name].revenue += item.quantity * item.price;
+      });
+    });
+
+    const topProducts = Object.entries(productSales)
+      .sort(([,a], [,b]) => b.quantity - a.quantity)
+      .slice(0, 5);
+
+    const reportContent = `
+      RELATÓRIO ${periodName.toUpperCase()} - CANTO DO AÇAÍ
+      ================================================
+      
+      Período: ${startDate.toLocaleDateString('pt-BR')} até ${now.toLocaleDateString('pt-BR')}
+      
+      RESUMO FINANCEIRO:
+      • Total de pedidos entregues: ${totalOrders}
+      • Faturamento total: R$ ${totalSales.toFixed(2)}
+      • Ticket médio: R$ ${totalOrders > 0 ? (totalSales / totalOrders).toFixed(2) : '0.00'}
+      
+      PRODUTOS MAIS VENDIDOS:
+      ${topProducts.map(([product, data], index) => 
+        `${index + 1}. ${product}\n   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}`
+      ).join('\n')}
+      
+      DETALHES DOS PEDIDOS:
+      ${filteredOrders.map(order => 
+        `\nPedido #${order.id} - ${order.date} ${order.time}
+        Cliente: ${order.customerName}
+        Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})`
+      ).join('')}
+      
+      ================================================
+      Relatório gerado em: ${now.toLocaleString('pt-BR')}
+    `;
+
+    // Criar e baixar arquivo PDF (simulado como texto)
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio-${period}-${now.toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const filteredProducts = products.filter(product =>
@@ -211,7 +547,7 @@ export default function AdminPanel() {
         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-white text-2xl font-bold">CA</span>
+              <span className="text-white text-2xl">🍇</span>
             </div>
             <h1 className="text-2xl font-bold text-gray-800">Canto do Açaí</h1>
             <p className="text-gray-600">Painel Administrativo</p>
@@ -274,7 +610,7 @@ export default function AdminPanel() {
         <div className="p-6 border-b">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold">CA</span>
+              <span className="text-white text-xl">🍇</span>
             </div>
             <div>
               <h2 className="font-bold text-gray-800">Canto do Açaí</h2>
@@ -293,6 +629,11 @@ export default function AdminPanel() {
             >
               <ShoppingCart size={20} />
               <span>Pedidos</span>
+              {orders.filter(o => o.status === 'em preparo').length > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
+                  {orders.filter(o => o.status === 'em preparo').length}
+                </span>
+              )}
             </button>
 
             <button
@@ -313,6 +654,16 @@ export default function AdminPanel() {
             >
               <Printer size={20} />
               <span>Impressão</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('relatorios')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'relatorios' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Download size={20} />
+              <span>Relatórios</span>
             </button>
 
             <button
@@ -345,6 +696,7 @@ export default function AdminPanel() {
             {activeTab === 'pedidos' && 'Gestão de Pedidos'}
             {activeTab === 'produtos' && 'Gerenciamento de Produtos'}
             {activeTab === 'impressao' && 'Central de Impressão'}
+            {activeTab === 'relatorios' && 'Relatórios de Vendas'}
             {activeTab === 'configuracoes' && 'Configurações'}
           </h1>
           
@@ -359,16 +711,6 @@ export default function AdminPanel() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
-            
-            {activeTab === 'configuracoes' && (
-              <button
-                onClick={generateSalesReport}
-                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download size={20} />
-                <span>Relatório de Vendas</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -381,25 +723,32 @@ export default function AdminPanel() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">Pedido #{order.id}</h3>
                     <p className="text-gray-600">{order.customerName} - {order.phone}</p>
-                    <p className="text-sm text-gray-500">{order.date}</p>
+                    <p className="text-sm text-gray-500">{order.date} às {order.time}</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <Clock size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-500">{getTimeSinceOrder(order.createdAt)}</span>
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <select
                       value={order.status}
                       onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      className={`px-3 py-1 rounded-full text-sm font-medium border-0 ${
                         order.status === 'em preparo' ? 'bg-yellow-100 text-yellow-800' :
+                        order.status === 'saiu para entrega' ? 'bg-blue-100 text-blue-800' :
                         order.status === 'entregue' ? 'bg-green-100 text-green-800' :
                         'bg-red-100 text-red-800'
                       }`}
                     >
                       <option value="em preparo">Em Preparo</option>
+                      <option value="saiu para entrega">Saiu para Entrega</option>
                       <option value="entregue">Entregue</option>
                       <option value="cancelado">Cancelado</option>
                     </select>
                     <button
                       onClick={() => printCoupon(order)}
                       className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      title="Imprimir Cupom"
                     >
                       <Printer size={16} />
                     </button>
@@ -432,7 +781,15 @@ export default function AdminPanel() {
                     </div>
                     <div className="text-sm text-gray-600">
                       Pagamento: {order.paymentMethod}
+                      {order.cashAmount && ` (Pago: R$ ${order.cashAmount.toFixed(2)} | Troco: R$ ${(order.cashAmount - order.total).toFixed(2)})`}
                     </div>
+                    {order.address && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        📍 {order.address}
+                        {order.streetName && ` - ${order.streetName}`}
+                        {order.houseNumber && `, ${order.houseNumber}`}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -544,7 +901,9 @@ export default function AdminPanel() {
                       required
                     >
                       <option value="">Selecione a categoria</option>
-                      <option value="Açaí">Açaí</option>
+                      <option value="Açaí Tradicional">Açaí Tradicional</option>
+                      <option value="Açaí Zero">Açaí Zero</option>
+                      <option value="Milk Shake">Milk Shake</option>
                       <option value="Bebidas">Bebidas</option>
                       <option value="Extras">Extras</option>
                     </select>
@@ -581,9 +940,20 @@ export default function AdminPanel() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Impressora Selecionada
+                    Formato do Papel
                   </label>
                   <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option>Papel Térmico 80mm (Recomendado)</option>
+                    <option>Papel Térmico 58mm</option>
+                    <option>A4 (Não recomendado)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Impressora Conectada
+                  </label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option>Detectar automaticamente</option>
                     <option>Elgin i9 (Térmica)</option>
                     <option>Bematech MP-4200 TH</option>
                     <option>Epson TM-T20X</option>
@@ -592,31 +962,99 @@ export default function AdminPanel() {
                 <div className="flex items-center space-x-2">
                   <input type="checkbox" id="auto-print" className="rounded" />
                   <label htmlFor="auto-print" className="text-sm text-gray-700">
-                    Impressão automática de cupons
+                    Impressão automática de cupons ao receber pedido
                   </label>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Pedidos Recentes para Impressão</h3>
+              <h3 className="text-lg font-semibold mb-4">Pedidos para Impressão</h3>
               <div className="space-y-3">
-                {orders.slice(0, 5).map((order) => (
+                {orders.slice(0, 10).map((order) => (
                   <div key={order.id} className="flex justify-between items-center p-3 border border-gray-200 rounded-lg">
                     <div>
                       <span className="font-medium">#{order.id}</span>
                       <span className="text-gray-600 ml-2">{order.customerName}</span>
                       <span className="text-sm text-gray-500 ml-2">R$ {order.total.toFixed(2)}</span>
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                        order.status === 'em preparo' ? 'bg-yellow-100 text-yellow-800' :
+                        order.status === 'saiu para entrega' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'entregue' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {order.status}
+                      </span>
                     </div>
                     <button
                       onClick={() => printCoupon(order)}
                       className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
                     >
                       <Printer size={16} />
-                      <span>Imprimir</span>
+                      <span>Imprimir Cupom</span>
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Aba Relatórios */}
+        {activeTab === 'relatorios' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
+                <h3 className="text-lg font-semibold mb-2">Vendas Hoje</h3>
+                <p className="text-3xl font-bold">
+                  R$ {orders.filter(o => o.status === 'entregue' && o.date === new Date().toLocaleDateString('pt-BR')).reduce((sum, o) => sum + o.total, 0).toFixed(2)}
+                </p>
+                <p className="text-green-100 text-sm">
+                  {orders.filter(o => o.status === 'entregue' && o.date === new Date().toLocaleDateString('pt-BR')).length} pedidos
+                </p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
+                <h3 className="text-lg font-semibold mb-2">Em Preparo</h3>
+                <p className="text-3xl font-bold">
+                  {orders.filter(o => o.status === 'em preparo').length}
+                </p>
+                <p className="text-blue-100 text-sm">pedidos ativos</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
+                <h3 className="text-lg font-semibold mb-2">Total de Produtos</h3>
+                <p className="text-3xl font-bold">{products.length}</p>
+                <p className="text-purple-100 text-sm">no cardápio</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold mb-4">Gerar Relatórios</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button
+                  onClick={() => generateSalesReport('daily')}
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Download size={20} />
+                  <span>Relatório Diário</span>
+                </button>
+                
+                <button
+                  onClick={() => generateSalesReport('weekly')}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Download size={20} />
+                  <span>Relatório Semanal</span>
+                </button>
+                
+                <button
+                  onClick={() => generateSalesReport('monthly')}
+                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Download size={20} />
+                  <span>Relatório Mensal</span>
+                </button>
               </div>
             </div>
           </div>
@@ -626,38 +1064,33 @@ export default function AdminPanel() {
         {activeTab === 'configuracoes' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Relatórios de Vendas</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-purple-800">Vendas Hoje</h4>
-                  <p className="text-2xl font-bold text-purple-600">
-                    R$ {orders.filter(o => o.status === 'entregue').reduce((sum, o) => sum + o.total, 0).toFixed(2)}
-                  </p>
+              <h3 className="text-lg font-semibold mb-4">Notificações</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-800">Som de Notificação</h4>
+                    <p className="text-sm text-gray-600">Tocar som quando novo pedido chegar</p>
+                  </div>
+                  <button
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      soundEnabled ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {soundEnabled ? <Bell size={20} /> : <BellOff size={20} />}
+                  </button>
                 </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-green-800">Pedidos Entregues</h4>
-                  <p className="text-2xl font-bold text-green-600">
-                    {orders.filter(o => o.status === 'entregue').length}
-                  </p>
-                </div>
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-yellow-800">Em Preparo</h4>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {orders.filter(o => o.status === 'em preparo').length}
-                  </p>
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" id="browser-notifications" className="rounded" defaultChecked />
+                  <label htmlFor="browser-notifications" className="text-sm text-gray-700">
+                    Notificações do navegador para novos pedidos
+                  </label>
                 </div>
               </div>
-              <button
-                onClick={generateSalesReport}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-              >
-                <Download size={20} />
-                <span>Gerar Relatório Completo</span>
-              </button>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Configurações Gerais</h3>
+              <h3 className="text-lg font-semibold mb-4">Configurações da Loja</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -684,9 +1117,20 @@ export default function AdminPanel() {
                     Endereço da Loja
                   </label>
                   <textarea
-                    defaultValue="Rua Principal, 123 - Centro"
+                    defaultValue="Poço Fundo - MG"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Taxa de Entrega (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    defaultValue="3.00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
                 <button className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
