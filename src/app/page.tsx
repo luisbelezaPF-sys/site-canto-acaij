@@ -557,38 +557,50 @@ export default function Home() {
 
     const registeredOrder = registerOrder(orderData)
 
-    // MENSAGEM CORRIGIDA PARA WHATSAPP - FORMATO LIMPO E ORGANIZADO SEM EMOJIS
-    let message = `Novo pedido\n`
+    // MENSAGEM FORMATADA CORRETAMENTE PARA WHATSAPP
+    let message = `Novo pedido
+`
     
     // Cliente
     if (customerName) {
-      message += `Cliente: ${customerName}\n`
+      message += `Cliente: ${customerName}
+`
     }
     
     // Telefone (se disponível)
-    message += `Telefone: (a ser informado)\n`
+    message += `Telefone: (a ser informado)
+`
     
     // Endereço
-    message += `Endereco: ${deliveryAddress}\n`
-    message += `Rua: ${streetName}\n`
-    message += `Numero: ${houseNumber}\n\n`
+    message += `Endereco: ${deliveryAddress}
+`
+    message += `Rua: ${streetName}
+`
+    message += `Numero: ${houseNumber}
+
+`
     
     // Itens
-    message += `Itens:\n`
+    message += `Itens:
+`
     cart.forEach((item) => {
       const productName = item.type === 'acai' ? 'Acai' : 'Milk Shake'
       const sizeInfo = item.size + (item.isZero ? ' Zero' : '')
       const ingredientsList = item.toppings.length > 0 ? item.toppings.join(', ') : 'sem adicionais'
       
-      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}\n`
+      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}
+`
     })
-    message += `\n`
+    message += `
+`
     
     // Total
-    message += `Total: R$ ${calculateCartTotal().toFixed(2)}\n`
+    message += `Total: R$ ${calculateCartTotal().toFixed(2)}
+`
     
     // Forma de pagamento
-    message += `Forma de pagamento: ${selectedPayment}\n`
+    message += `Forma de pagamento: ${selectedPayment}
+`
     
     // Observações (se houver troco)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
@@ -596,7 +608,8 @@ export default function Home() {
       const total = calculateCartTotal()
       const change = cashValue - total
       if (change > 0) {
-        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}\n`
+        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}
+`
       }
     }
 
