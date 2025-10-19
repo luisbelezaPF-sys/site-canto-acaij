@@ -409,57 +409,57 @@ export default function Home() {
   const formatReportForWhatsApp = (report: DailyReport): string => {
     const date = new Date(report.date).toLocaleDateString('pt-BR')
     
-    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\\\n`
-    message += `📅 Data: ${date}\\\\n\\\\n`
+    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\n`
+    message += `📅 Data: ${date}\\n\\n`
     
-    message += `💰 *RESUMO FINANCEIRO:*\\\\n`
-    message += `• Total de vendas: ${report.totalSales} pedidos\\\\n`
-    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\\\n\\\\n`
+    message += `💰 *RESUMO FINANCEIRO:*\\n`
+    message += `• Total de vendas: ${report.totalSales} pedidos\\n`
+    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\n\\n`
     
-    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\\\n`
+    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\n`
     const sortedProducts = Object.entries(report.productSales)
       .sort(([,a], [,b]) => b.quantity - a.quantity)
       .slice(0, 5)
     
     sortedProducts.forEach(([product, data], index) => {
-      message += `${index + 1}. ${product}\\\\n`
-      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\\\n`
+      message += `${index + 1}. ${product}\\n`
+      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\n`
     })
     
-    message += `\\\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\\\n`
+    message += `\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\n`
     report.orders.forEach((order, index) => {
       const time = order.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      message += `\\\\n🕐 Pedido ${index + 1} - ${time}\\\\n`
+      message += `\\n🕐 Pedido ${index + 1} - ${time}\\n`
       
       if (order.customerName) {
-        message += `👤 Cliente: ${order.customerName}\\\\n`
+        message += `👤 Cliente: ${order.customerName}\\n`
       }
       
       message += `💳 Pagamento: ${order.paymentMethod}`
       if (order.cashAmount) {
         message += ` (Valor pago: R$ ${order.cashAmount.toFixed(2)})`
       }
-      message += `\\\\n`
+      message += `\\n`
       
       if (order.address) {
-        message += `📍 Endereço: ${order.address}\\\\n`
-        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\\\n`
-        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\\\n`
+        message += `📍 Endereço: ${order.address}\\n`
+        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\n`
+        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\n`
       }
       
-      message += `📦 Itens:\\\\n`
+      message += `📦 Itens:\\n`
       order.items.forEach(item => {
-        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\\\n`
-        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\\\n`
+        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\n`
+        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\n`
         if (item.toppings.length > 0) {
-          message += `    Adicionais: ${item.toppings.join(', ')}\\\\n`
+          message += `    Adicionais: ${item.toppings.join(', ')}\\n`
         }
       })
       
-      message += `💰 Total: R$ ${order.total.toFixed(2)}\\\\n`
+      message += `💰 Total: R$ ${order.total.toFixed(2)}\\n`
     })
     
-    message += `\\\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
+    message += `\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
     
     return message
   }
@@ -558,37 +558,37 @@ export default function Home() {
     const registeredOrder = registerOrder(orderData)
 
     // MENSAGEM CORRIGIDA PARA WHATSAPP - FORMATO LIMPO E ORGANIZADO SEM EMOJIS
-    let message = `Novo pedido\\n`
+    let message = `Novo pedido\n`
     
     // Cliente
     if (customerName) {
-      message += `Cliente: ${customerName}\\n`
+      message += `Cliente: ${customerName}\n`
     }
     
     // Telefone (se disponível)
-    message += `Telefone: (a ser informado)\\n`
+    message += `Telefone: (a ser informado)\n`
     
     // Endereço
-    message += `Endereco: ${deliveryAddress}\\n`
-    message += `Rua: ${streetName}\\n`
-    message += `Numero: ${houseNumber}\\n\\n`
+    message += `Endereco: ${deliveryAddress}\n`
+    message += `Rua: ${streetName}\n`
+    message += `Numero: ${houseNumber}\n\n`
     
     // Itens
-    message += `Itens:\\n`
+    message += `Itens:\n`
     cart.forEach((item) => {
       const productName = item.type === 'acai' ? 'Acai' : 'Milk Shake'
       const sizeInfo = item.size + (item.isZero ? ' Zero' : '')
       const ingredientsList = item.toppings.length > 0 ? item.toppings.join(', ') : 'sem adicionais'
       
-      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}\\n`
+      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}\n`
     })
-    message += `\\n`
+    message += `\n`
     
     // Total
-    message += `Total: R$ ${calculateCartTotal().toFixed(2)}\\n`
+    message += `Total: R$ ${calculateCartTotal().toFixed(2)}\n`
     
     // Forma de pagamento
-    message += `Forma de pagamento: ${selectedPayment}\\n`
+    message += `Forma de pagamento: ${selectedPayment}\n`
     
     // Observações (se houver troco)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
@@ -596,7 +596,7 @@ export default function Home() {
       const total = calculateCartTotal()
       const change = cashValue - total
       if (change > 0) {
-        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}\\n`
+        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}\n`
       }
     }
 
@@ -629,7 +629,7 @@ export default function Home() {
   }
 
   const sendToWhatsApp = (customMessage?: string) => {
-    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\\\n\\\\nPor favor, me ajude a montar meu pedido:\\\\n• Tamanho:\\\\n• Sabor:\\\\n• Acompanhamentos:\\\\n• Endereço para entrega:\\\\n\\\\nObrigado!`
+    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\n\\nPor favor, me ajude a montar meu pedido:\\n• Tamanho:\\n• Sabor:\\n• Acompanhamentos:\\n• Endereço para entrega:\\n\\nObrigado!`
     openWhatsApp(message)
   }
 
@@ -1019,7 +1019,7 @@ export default function Home() {
                       {promotion.description}
                     </p>
                     <button
-                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\\\n\\\\n${promotion.description}\\\\n\\\\nPoderia me dar mais detalhes?`)}
+                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\n\\n${promotion.description}\\n\\nPoderia me dar mais detalhes?`)}
                       className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white py-3 rounded-full font-bold hover:from-purple-700 hover:to-purple-900 transition-all duration-300"
                     >
                       <Phone className="inline-block mr-2" size={20} />
@@ -1803,7 +1803,7 @@ export default function Home() {
                   Estamos sempre prontos para atender você! Entre em contato pelo WhatsApp e faça seu pedido.
                 </p>
                 <button
-                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\\\n\\\\nTenho uma dúvida sobre:\\\\n\\\\nObrigado!`)}
+                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\n\\nTenho uma dúvida sobre:\\n\\nObrigado!`)}
                   className="bg-yellow-400 text-purple-800 px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105"
                 >
                   <Phone className="inline-block mr-2" size={20} />
