@@ -600,7 +600,11 @@ export default function Home() {
       }
     }
 
-    openWhatsApp(message)
+    // Enviar para o WhatsApp com o número correto
+    const whatsappNumber = "5535997440729"
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`
+    window.open(whatsappUrl, '_blank')
 
     // Limpar formulário após envio
     setCart([])
