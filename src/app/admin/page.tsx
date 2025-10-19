@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, Upload, Image as ImageIcon, FileText, Receipt } from 'lucide-react';
+import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, Upload, Image as ImageIcon, FileText, Receipt, Save } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -46,6 +46,12 @@ interface PromotionImage {
   description: string;
 }
 
+interface Ingredient {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -54,10 +60,13 @@ export default function AdminPanel() {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [promotionImages, setPromotionImages] = useState<PromotionImage[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [showProductForm, setShowProductForm] = useState(false);
   const [showPromotionForm, setShowPromotionForm] = useState(false);
+  const [showIngredientForm, setShowIngredientForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingPromotion, setEditingPromotion] = useState<PromotionImage | null>(null);
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -271,6 +280,49 @@ export default function AdminPanel() {
       ];
       setPromotionImages(defaultPromotions);
       localStorage.setItem('acai-promotions', JSON.stringify(defaultPromotions));
+    }
+
+    // Carregar ingredientes do localStorage ou usar padrão
+    const savedIngredients = localStorage.getItem('acai-ingredients');
+    if (savedIngredients) {
+      setIngredients(JSON.parse(savedIngredients));
+    } else {
+      const defaultIngredients: Ingredient[] = [
+        { id: '1', name: 'Ovomaltine', price: 4.00 },
+        { id: '2', name: 'Nutella', price: 5.00 },
+        { id: '3', name: 'Creme de Leite Ninho', price: 4.00 },
+        { id: '4', name: 'Creme de Ovomaltine', price: 4.00 },
+        { id: '5', name: 'Creme de Ferrero Rocher', price: 4.00 },
+        { id: '6', name: 'Creme de Avelã', price: 4.00 },
+        { id: '7', name: 'Mousse de Maracujá', price: 3.00 },
+        { id: '8', name: 'Mousse de Morango', price: 3.00 },
+        { id: '9', name: 'Mousse de Limão', price: 3.00 },
+        { id: '10', name: 'Sonho de Valsa', price: 3.00 },
+        { id: '11', name: 'Trento', price: 3.00 },
+        { id: '12', name: 'Confete', price: 2.50 },
+        { id: '13', name: 'Bis Branco', price: 2.50 },
+        { id: '14', name: 'Bis Preto', price: 2.50 },
+        { id: '15', name: 'Suflair', price: 5.00 },
+        { id: '16', name: 'Chantilly', price: 2.50 },
+        { id: '17', name: 'Paçoca', price: 3.00 },
+        { id: '18', name: 'Leite Condensado', price: 2.50 },
+        { id: '19', name: 'Kit Kat', price: 4.00 },
+        { id: '20', name: 'Gotas de Chocolate', price: 2.50 },
+        { id: '21', name: 'Power Ball', price: 2.50 },
+        { id: '22', name: 'Granola', price: 2.50 },
+        { id: '23', name: 'Leite em Pó', price: 2.00 },
+        { id: '24', name: 'Danoninho', price: 2.00 },
+        { id: '25', name: 'Banana', price: 2.00 },
+        { id: '26', name: 'Morango', price: 3.00 },
+        { id: '27', name: 'Uva', price: 3.00 },
+        { id: '28', name: 'Kiwi', price: 3.00 },
+        { id: '29', name: 'Manga', price: 3.00 },
+        { id: '30', name: 'Cobertura Chocolate', price: 2.00 },
+        { id: '31', name: 'Cobertura Morango', price: 2.00 },
+        { id: '32', name: 'Cobertura Caramelo', price: 2.00 }
+      ];
+      setIngredients(defaultIngredients);
+      localStorage.setItem('acai-ingredients', JSON.stringify(defaultIngredients));
     }
 
     setProducts(siteProducts);
@@ -552,6 +604,37 @@ export default function AdminPanel() {
     setPromotionImagePreview('');
   };
 
+  const handleIngredientSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    
+    const ingredientData = {
+      id: editingIngredient?.id || `ingredient-${Date.now()}`,
+      name: formData.get('name') as string,
+      price: parseFloat(formData.get('price') as string),
+    };
+
+    let updatedIngredients;
+    if (editingIngredient) {
+      updatedIngredients = ingredients.map(i => i.id === editingIngredient.id ? ingredientData : i);
+    } else {
+      updatedIngredients = [...ingredients, ingredientData];
+    }
+
+    setIngredients(updatedIngredients);
+    localStorage.setItem('acai-ingredients', JSON.stringify(updatedIngredients));
+    setShowIngredientForm(false);
+    setEditingIngredient(null);
+  };
+
+  const updateIngredientPrice = (id: string, newPrice: number) => {
+    const updatedIngredients = ingredients.map(ingredient => 
+      ingredient.id === id ? { ...ingredient, price: newPrice } : ingredient
+    );
+    setIngredients(updatedIngredients);
+    localStorage.setItem('acai-ingredients', JSON.stringify(updatedIngredients));
+  };
+
   const deleteProduct = (id: string) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
       setProducts(products.filter(p => p.id !== id));
@@ -563,6 +646,14 @@ export default function AdminPanel() {
       const updatedPromotions = promotionImages.filter(p => p.id !== id);
       setPromotionImages(updatedPromotions);
       localStorage.setItem('acai-promotions', JSON.stringify(updatedPromotions));
+    }
+  };
+
+  const deleteIngredient = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este ingrediente?')) {
+      const updatedIngredients = ingredients.filter(i => i.id !== id);
+      setIngredients(updatedIngredients);
+      localStorage.setItem('acai-ingredients', JSON.stringify(updatedIngredients));
     }
   };
 
@@ -640,7 +731,7 @@ export default function AdminPanel() {
       </div>
     `;
 
-    // Abrir janela de impressão formatada para papel térmico 80mm
+    // Abrir janela de impressão formatada para papel térmico 80mm E computador
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
@@ -663,11 +754,39 @@ export default function AdminPanel() {
                 body {
                   width: 80mm;
                 }
+                /* Estilos para impressão em computador */
+                @page {
+                  size: A4;
+                  margin: 20mm;
+                }
+                .coupon-container {
+                  max-width: 80mm;
+                  margin: 0 auto;
+                  border: 1px solid #000;
+                  padding: 10px;
+                }
+              }
+              @media screen {
+                /* Estilos para visualização na tela */
+                body {
+                  background: #f0f0f0;
+                  padding: 20px;
+                }
+                .coupon-container {
+                  max-width: 80mm;
+                  margin: 0 auto;
+                  background: white;
+                  border: 1px solid #000;
+                  padding: 10px;
+                  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                }
               }
             </style>
           </head>
           <body>
-            ${couponContent}
+            <div class="coupon-container">
+              ${couponContent}
+            </div>
             <script>
               window.onload = function() {
                 window.print();
@@ -738,12 +857,12 @@ export default function AdminPanel() {
       
       PRODUTOS MAIS VENDIDOS:
       ${topProducts.map(([product, data], index) => 
-        `${index + 1}. ${product}\n   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}`
-      ).join('\n')}
+        `${index + 1}. ${product}\\n   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}`
+      ).join('\\n')}
       
       DETALHES DOS PEDIDOS:
       ${filteredOrders.map(order => 
-        `\nPedido #${order.id} - ${order.date} ${order.time}
+        `\\nPedido #${order.id} - ${order.date} ${order.time}
         Cliente: ${order.customerName}
         Total: R$ ${order.total.toFixed(2)} (${order.paymentMethod})
         Cupom Fiscal: ${order.hasFiscalCoupon ? 'SIM' : 'NÃO'}`
@@ -773,6 +892,10 @@ export default function AdminPanel() {
   const filteredOrders = orders.filter(order =>
     order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredIngredients = ingredients.filter(ingredient =>
+    ingredient.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Filtrar pedidos com cupom fiscal
@@ -897,6 +1020,19 @@ export default function AdminPanel() {
             </button>
 
             <button
+              onClick={() => setActiveTab('ingredientes')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'ingredientes' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Settings size={20} />
+              <span>Gerenciar Ingredientes</span>
+              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
+                {ingredients.length}
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('promocoes')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'promocoes' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
@@ -959,6 +1095,7 @@ export default function AdminPanel() {
             {activeTab === 'pedidos' && 'Gestão de Pedidos'}
             {activeTab === 'cupons' && 'Cupons Fiscais'}
             {activeTab === 'produtos' && 'Gerenciamento de Produtos'}
+            {activeTab === 'ingredientes' && 'Gerenciar Ingredientes'}
             {activeTab === 'promocoes' && 'Gerenciamento de Promoções'}
             {activeTab === 'impressao' && 'Central de Impressão'}
             {activeTab === 'relatorios' && 'Relatórios de Vendas'}
@@ -978,6 +1115,158 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
+
+        {/* Aba Gerenciar Ingredientes */}
+        {activeTab === 'ingredientes' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">🧪 Gerenciar Ingredientes</h3>
+                  <p className="text-blue-100">
+                    Controle os preços dos ingredientes que aparecem no site. Alterações são aplicadas automaticamente.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold">{ingredients.length}</div>
+                  <div className="text-blue-100">Ingredientes</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Lista de Ingredientes</h2>
+              <button
+                onClick={() => setShowIngredientForm(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+              >
+                <Plus size={20} />
+                <span>Adicionar Ingrediente</span>
+              </button>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Nome do Ingrediente
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Preço Atual
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ações
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredIngredients.map((ingredient) => (
+                      <tr key={ingredient.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{ingredient.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={ingredient.price}
+                            onChange={(e) => updateIngredientPrice(ingredient.id, parseFloat(e.target.value) || 0)}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                          <span className="ml-2 text-sm text-gray-500">R$</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                setEditingIngredient(ingredient);
+                                setShowIngredientForm(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
+                            >
+                              <Edit size={16} />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              onClick={() => deleteIngredient(ingredient.id)}
+                              className="text-red-600 hover:text-red-900 flex items-center space-x-1"
+                            >
+                              <Trash2 size={16} />
+                              <span>Excluir</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal de Ingrediente */}
+            {showIngredientForm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-semibold mb-4">
+                    {editingIngredient ? 'Editar Ingrediente' : 'Adicionar Ingrediente'}
+                  </h3>
+                  <form onSubmit={handleIngredientSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nome do Ingrediente
+                      </label>
+                      <input
+                        name="name"
+                        type="text"
+                        placeholder="Ex: Nutella"
+                        defaultValue={editingIngredient?.name}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Preço (R$)
+                      </label>
+                      <input
+                        name="price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Ex: 5.00"
+                        defaultValue={editingIngredient?.price}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        required
+                      />
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        type="submit"
+                        className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <Save size={16} />
+                        <span>{editingIngredient ? 'Atualizar' : 'Adicionar'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowIngredientForm(false);
+                          setEditingIngredient(null);
+                        }}
+                        className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Aba Cupons Fiscais */}
         {activeTab === 'cupons' && (
@@ -1549,7 +1838,7 @@ export default function AdminPanel() {
                   <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                     <option>Papel Térmico 80mm (Recomendado)</option>
                     <option>Papel Térmico 58mm</option>
-                    <option>A4 (Não recomendado)</option>
+                    <option>A4 (Para computador)</option>
                   </select>
                 </div>
                 <div>
@@ -1561,6 +1850,7 @@ export default function AdminPanel() {
                     <option>Elgin i9 (Térmica)</option>
                     <option>Bematech MP-4200 TH</option>
                     <option>Epson TM-T20X</option>
+                    <option>Impressora do computador (A4)</option>
                   </select>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -1568,6 +1858,13 @@ export default function AdminPanel() {
                   <label htmlFor="auto-print" className="text-sm text-gray-700">
                     Impressão automática de cupons ao receber pedido
                   </label>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-800 mb-2">💻 Impressão em Computador</h4>
+                  <p className="text-sm text-blue-700">
+                    Os cupons fiscais agora são compatíveis com impressoras de computador (A4) além das impressoras térmicas tradicionais.
+                    O sistema detecta automaticamente o tipo de impressora e ajusta o formato.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1778,7 +2075,7 @@ export default function AdminPanel() {
                     ✅ Sistema de cupons fiscais ativo e funcionando
                   </p>
                   <p className="text-sm text-green-600 mt-1">
-                    Todos os pedidos feitos pelo site geram automaticamente cupons fiscais válidos para impressão.
+                    Todos os pedidos feitos pelo site geram automaticamente cupons fiscais válidos para impressão em papel térmico ou computador.
                   </p>
                 </div>
               </div>

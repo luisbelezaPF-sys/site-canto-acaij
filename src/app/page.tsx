@@ -46,6 +46,12 @@ interface PromotionImage {
   description: string
 }
 
+interface Ingredient {
+  id: string
+  name: string
+  price: number
+}
+
 export default function Home() {
   const [cart, setCart] = useState<OrderItem[]>([])
   const [activeSection, setActiveSection] = useState('inicio')
@@ -79,6 +85,9 @@ export default function Home() {
   // Estados para promoções
   const [promotionImages, setPromotionImages] = useState<PromotionImage[]>([])
 
+  // Estados para ingredientes editáveis
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+
   const deliveryFee = 3.00
   const whatsappNumber = "+5535997440729" // Número para relatórios
 
@@ -95,6 +104,7 @@ export default function Home() {
     const savedOrders = localStorage.getItem('acai-orders')
     const savedReports = localStorage.getItem('acai-reports')
     const savedPromotions = localStorage.getItem('acai-promotions')
+    const savedIngredients = localStorage.getItem('acai-ingredients')
     
     if (savedOrders) {
       const orders = JSON.parse(savedOrders).map((order: any) => ({
@@ -141,6 +151,48 @@ export default function Home() {
       ]
       setPromotionImages(defaultPromotions)
       localStorage.setItem('acai-promotions', JSON.stringify(defaultPromotions))
+    }
+
+    // Carregar ingredientes ou usar padrão
+    if (savedIngredients) {
+      setIngredients(JSON.parse(savedIngredients))
+    } else {
+      const defaultIngredients: Ingredient[] = [
+        { id: '1', name: 'Ovomaltine', price: 4.00 },
+        { id: '2', name: 'Nutella', price: 5.00 },
+        { id: '3', name: 'Creme de Leite Ninho', price: 4.00 },
+        { id: '4', name: 'Creme de Ovomaltine', price: 4.00 },
+        { id: '5', name: 'Creme de Ferrero Rocher', price: 4.00 },
+        { id: '6', name: 'Creme de Avelã', price: 4.00 },
+        { id: '7', name: 'Mousse de Maracujá', price: 3.00 },
+        { id: '8', name: 'Mousse de Morango', price: 3.00 },
+        { id: '9', name: 'Mousse de Limão', price: 3.00 },
+        { id: '10', name: 'Sonho de Valsa', price: 3.00 },
+        { id: '11', name: 'Trento', price: 3.00 },
+        { id: '12', name: 'Confete', price: 2.50 },
+        { id: '13', name: 'Bis Branco', price: 2.50 },
+        { id: '14', name: 'Bis Preto', price: 2.50 },
+        { id: '15', name: 'Suflair', price: 5.00 },
+        { id: '16', name: 'Chantilly', price: 2.50 },
+        { id: '17', name: 'Paçoca', price: 3.00 },
+        { id: '18', name: 'Leite Condensado', price: 2.50 },
+        { id: '19', name: 'Kit Kat', price: 4.00 },
+        { id: '20', name: 'Gotas de Chocolate', price: 2.50 },
+        { id: '21', name: 'Power Ball', price: 2.50 },
+        { id: '22', name: 'Granola', price: 2.50 },
+        { id: '23', name: 'Leite em Pó', price: 2.00 },
+        { id: '24', name: 'Danoninho', price: 2.00 },
+        { id: '25', name: 'Banana', price: 2.00 },
+        { id: '26', name: 'Morango', price: 3.00 },
+        { id: '27', name: 'Uva', price: 3.00 },
+        { id: '28', name: 'Kiwi', price: 3.00 },
+        { id: '29', name: 'Manga', price: 3.00 },
+        { id: '30', name: 'Cobertura Chocolate', price: 2.00 },
+        { id: '31', name: 'Cobertura Morango', price: 2.00 },
+        { id: '32', name: 'Cobertura Caramelo', price: 2.00 }
+      ]
+      setIngredients(defaultIngredients)
+      localStorage.setItem('acai-ingredients', JSON.stringify(defaultIngredients))
     }
 
     // Verificar se precisa gerar relatório diário (executar às 23:59)
@@ -229,40 +281,11 @@ export default function Home() {
     'Unicórnio (com marshmallows, confete e chantilly)'
   ]
 
-  const toppings = [
-    { name: 'Ovomaltine', price: 4.00 },
-    { name: 'Nutella', price: 5.00 },
-    { name: 'Creme de Leite Ninho', price: 4.00 },
-    { name: 'Creme de Ovomaltine', price: 4.00 },
-    { name: 'Creme de Ferrero Rocher', price: 4.00 },
-    { name: 'Creme de Avelã', price: 4.00 },
-    { name: 'Mousse de Maracujá', price: 3.00 },
-    { name: 'Mousse de Morango', price: 3.00 },
-    { name: 'Mousse de Limão', price: 3.00 },
-    { name: 'Sonho de Valsa', price: 3.00 },
-    { name: 'Trento', price: 3.00 },
-    { name: 'Confete', price: 2.50 },
-    { name: 'Bis Branco', price: 2.50 },
-    { name: 'Bis Preto', price: 2.50 },
-    { name: 'Suflair', price: 5.00 },
-    { name: 'Chantilly', price: 2.50 },
-    { name: 'Paçoca', price: 3.00 },
-    { name: 'Leite Condensado', price: 2.50 },
-    { name: 'Kit Kat', price: 4.00 },
-    { name: 'Gotas de Chocolate', price: 2.50 },
-    { name: 'Power Ball', price: 2.50 },
-    { name: 'Granola', price: 2.50 },
-    { name: 'Leite em Pó', price: 2.00 },
-    { name: 'Danoninho', price: 2.00 },
-    { name: 'Banana', price: 2.00 },
-    { name: 'Morango', price: 3.00 },
-    { name: 'Uva', price: 3.00 },
-    { name: 'Kiwi', price: 3.00 },
-    { name: 'Manga', price: 3.00 },
-    { name: 'Cobertura Chocolate', price: 2.00 },
-    { name: 'Cobertura Morango', price: 2.00 },
-    { name: 'Cobertura Caramelo', price: 2.00 }
-  ]
+  // Usar ingredientes dinâmicos em vez de array fixo
+  const toppings = ingredients.map(ingredient => ({
+    name: ingredient.name,
+    price: ingredient.price
+  }))
 
   const toggleTopping = (toppingName: string) => {
     setSelectedAcaiToppings(prev => 
@@ -386,57 +409,57 @@ export default function Home() {
   const formatReportForWhatsApp = (report: DailyReport): string => {
     const date = new Date(report.date).toLocaleDateString('pt-BR')
     
-    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\n`
-    message += `📅 Data: ${date}\\n\\n`
+    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\\\n`
+    message += `📅 Data: ${date}\\\\n\\\\n`
     
-    message += `💰 *RESUMO FINANCEIRO:*\\n`
-    message += `• Total de vendas: ${report.totalSales} pedidos\\n`
-    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\n\\n`
+    message += `💰 *RESUMO FINANCEIRO:*\\\\n`
+    message += `• Total de vendas: ${report.totalSales} pedidos\\\\n`
+    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\\\n\\\\n`
     
-    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\n`
+    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\\\n`
     const sortedProducts = Object.entries(report.productSales)
       .sort(([,a], [,b]) => b.quantity - a.quantity)
       .slice(0, 5)
     
     sortedProducts.forEach(([product, data], index) => {
-      message += `${index + 1}. ${product}\\n`
-      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\n`
+      message += `${index + 1}. ${product}\\\\n`
+      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\\\n`
     })
     
-    message += `\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\n`
+    message += `\\\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\\\n`
     report.orders.forEach((order, index) => {
       const time = order.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      message += `\\n🕐 Pedido ${index + 1} - ${time}\\n`
+      message += `\\\\n🕐 Pedido ${index + 1} - ${time}\\\\n`
       
       if (order.customerName) {
-        message += `👤 Cliente: ${order.customerName}\\n`
+        message += `👤 Cliente: ${order.customerName}\\\\n`
       }
       
       message += `💳 Pagamento: ${order.paymentMethod}`
       if (order.cashAmount) {
         message += ` (Valor pago: R$ ${order.cashAmount.toFixed(2)})`
       }
-      message += `\\n`
+      message += `\\\\n`
       
       if (order.address) {
-        message += `📍 Endereço: ${order.address}\\n`
-        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\n`
-        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\n`
+        message += `📍 Endereço: ${order.address}\\\\n`
+        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\\\n`
+        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\\\n`
       }
       
-      message += `📦 Itens:\\n`
+      message += `📦 Itens:\\\\n`
       order.items.forEach(item => {
-        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\n`
-        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\n`
+        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\\\n`
+        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\\\n`
         if (item.toppings.length > 0) {
-          message += `    Adicionais: ${item.toppings.join(', ')}\\n`
+          message += `    Adicionais: ${item.toppings.join(', ')}\\\\n`
         }
       })
       
-      message += `💰 Total: R$ ${order.total.toFixed(2)}\\n`
+      message += `💰 Total: R$ ${order.total.toFixed(2)}\\\\n`
     })
     
-    message += `\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
+    message += `\\\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
     
     return message
   }
@@ -534,57 +557,48 @@ export default function Home() {
 
     const registeredOrder = registerOrder(orderData)
 
-    // MENSAGEM CORRIGIDA PARA WHATSAPP - FORMATAÇÃO LIMPA E ORGANIZADA
-    let message = `NOVO PEDIDO - O CANTO DO ACAI\\n\\n`
+    // MENSAGEM CORRIGIDA PARA WHATSAPP - FORMATO LIMPO E ORGANIZADO SEM EMOJIS
+    let message = `Novo pedido\\n`
     
-    // Nome do cliente
+    // Cliente
     if (customerName) {
-      message += `Nome do Cliente: ${customerName}\\n\\n`
+      message += `Cliente: ${customerName}\\n`
     }
     
-    // Itens do pedido - CADA ITEM EM LINHAS SEPARADAS
-    message += `Itens do Pedido:\\n`
-    cart.forEach((item, index) => {
-      message += `${index + 1}. Tipo: ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'}\\n`
-      message += `   Tamanho: ${item.size}${item.isZero ? ' (Zero)' : ''}\\n`
-      message += `   Sabor: ${item.flavor}\\n`
-      if (item.toppings.length > 0) {
-        message += `   Adicionais: ${item.toppings.join(', ')}\\n`
-      }
-      message += `   Quantidade: ${item.quantity}\\n`
-      message += `   Subtotal: R$ ${(item.price * item.quantity).toFixed(2)}\\n\\n`
-    })
-
-    // Resumo financeiro
-    message += `Resumo Financeiro:\\n`
-    message += `Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\\n`
-    message += `Taxa de Entrega: R$ ${deliveryFee.toFixed(2)}\\n`
-    message += `Total Final: R$ ${calculateCartTotal().toFixed(2)}\\n`
+    // Telefone (se disponível)
+    message += `Telefone: (a ser informado)\\n`
     
-    // Valor pago e troco (se dinheiro)
-    if (selectedPayment === 'Dinheiro' && cashAmount) {
-      const cashValue = parseFloat(cashAmount)
-      const total = calculateCartTotal()
-      const change = cashValue - total
-      message += `Valor Pago: R$ ${cashValue.toFixed(2)}\\n`
-      if (change > 0) {
-        message += `Troco: R$ ${change.toFixed(2)}\\n`
-      }
-    }
-    message += `\\n`
-    
-    // Forma de pagamento
-    message += `Forma de Pagamento: ${selectedPayment}\\n\\n`
-    
-    // Dados de entrega - CADA INFORMAÇÃO EM LINHA SEPARADA
-    message += `Dados de Entrega:\\n`
+    // Endereço
     message += `Endereco: ${deliveryAddress}\\n`
     message += `Rua: ${streetName}\\n`
     message += `Numero: ${houseNumber}\\n\\n`
     
-    // Número do pedido e cupom fiscal
-    message += `Numero do Pedido: ${registeredOrder.id}\\n`
-    message += `📄 CUPOM FISCAL GERADO - Disponível para impressão no painel administrativo`
+    // Itens
+    message += `Itens:\\n`
+    cart.forEach((item) => {
+      const productName = item.type === 'acai' ? 'Acai' : 'Milk Shake'
+      const sizeInfo = item.size + (item.isZero ? ' Zero' : '')
+      const ingredientsList = item.toppings.length > 0 ? item.toppings.join(', ') : 'sem adicionais'
+      
+      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}\\n`
+    })
+    message += `\\n`
+    
+    // Total
+    message += `Total: R$ ${calculateCartTotal().toFixed(2)}\\n`
+    
+    // Forma de pagamento
+    message += `Forma de pagamento: ${selectedPayment}\\n`
+    
+    // Observações (se houver troco)
+    if (selectedPayment === 'Dinheiro' && cashAmount) {
+      const cashValue = parseFloat(cashAmount)
+      const total = calculateCartTotal()
+      const change = cashValue - total
+      if (change > 0) {
+        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}\\n`
+      }
+    }
 
     openWhatsApp(message)
 
@@ -597,7 +611,7 @@ export default function Home() {
     setHouseNumber('')
     setCustomerName('')
     
-    alert('Pedido registrado e enviado com sucesso! 🎉\n\n📄 Cupom fiscal gerado automaticamente e disponível no painel administrativo para impressão.')
+    alert('Pedido enviado com sucesso! Aguarde nossa resposta no WhatsApp.')
   }
 
   const sendCartToWhatsApp = () => {
@@ -611,7 +625,7 @@ export default function Home() {
   }
 
   const sendToWhatsApp = (customMessage?: string) => {
-    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\n\\nPor favor, me ajude a montar meu pedido:\\n• Tamanho:\\n• Sabor:\\n• Acompanhamentos:\\n• Endereço para entrega:\\n\\nObrigado!`
+    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\\\n\\\\nPor favor, me ajude a montar meu pedido:\\\\n• Tamanho:\\\\n• Sabor:\\\\n• Acompanhamentos:\\\\n• Endereço para entrega:\\\\n\\\\nObrigado!`
     openWhatsApp(message)
   }
 
@@ -1001,7 +1015,7 @@ export default function Home() {
                       {promotion.description}
                     </p>
                     <button
-                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\n\\n${promotion.description}\\n\\nPoderia me dar mais detalhes?`)}
+                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\\\n\\\\n${promotion.description}\\\\n\\\\nPoderia me dar mais detalhes?`)}
                       className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white py-3 rounded-full font-bold hover:from-purple-700 hover:to-purple-900 transition-all duration-300"
                     >
                       <Phone className="inline-block mr-2" size={20} />
@@ -1720,7 +1734,7 @@ export default function Home() {
                         className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-4 rounded-full text-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
                       >
                         <Phone className="inline-block mr-2" size={24} />
-                        Enviar Pedido Completo
+                        Enviar Pedido
                       </button>
                     </div>
                   </div>
@@ -1785,7 +1799,7 @@ export default function Home() {
                   Estamos sempre prontos para atender você! Entre em contato pelo WhatsApp e faça seu pedido.
                 </p>
                 <button
-                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\n\\nTenho uma dúvida sobre:\\n\\nObrigado!`)}
+                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\\\n\\\\nTenho uma dúvida sobre:\\\\n\\\\nObrigado!`)}
                   className="bg-yellow-400 text-purple-800 px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105"
                 >
                   <Phone className="inline-block mr-2" size={20} />
