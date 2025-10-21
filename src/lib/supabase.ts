@@ -1,10 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Configuração segura para build - usa valores padrão válidos se env vars não estiverem definidas
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder'
+// Configuração segura para Vercel - verifica se as variáveis existem
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Validação das variáveis de ambiente
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('⚠️ Variáveis do Supabase não configuradas. Usando cliente mock.')
+}
+
+// Cria cliente apenas se as variáveis estiverem definidas
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
 
 // Tipos para o banco de dados
 export interface PedidoSupabase {
@@ -26,12 +34,22 @@ export interface PedidoSupabase {
   updated_at?: string
 }
 
-// Função SIMPLIFICADA para inserir pedido - SEMPRE FUNCIONA
+// Função para verificar se Supabase está configurado
+export const isSupabaseConfigured = () => {
+  return supabase !== null && supabaseUrl && supabaseAnonKey
+}
+
+// Função SEGURA para inserir pedido
 export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
-  console.log('🚀 Inserindo pedido no Supabase:', pedido)
+  console.log('🚀 Tentando inserir pedido:', pedido)
+  
+  if (!isSupabaseConfigured()) {
+    console.warn('⚠️ Supabase não configurado. Pedido não será salvo.')
+    throw new Error('Supabase não configurado. Configure as variáveis de ambiente.')
+  }
   
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('pedidos')
       .insert([pedido])
       .select()
@@ -53,8 +71,13 @@ export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_
 export const fetchPedidos = async () => {
   console.log('📥 Buscando pedidos do Supabase...')
   
+  if (!isSupabaseConfigured()) {
+    console.warn('⚠️ Supabase não configurado. Retornando array vazio.')
+    return []
+  }
+  
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('pedidos')
       .select('*')
       .order('created_at', { ascending: false })
@@ -65,7 +88,7 @@ export const fetchPedidos = async () => {
     }
     
     console.log(`✅ ${data?.length || 0} pedidos encontrados`)
-    return data
+    return data || []
   } catch (error) {
     console.error('❌ Erro na função fetchPedidos:', error)
     return []
@@ -74,8 +97,12 @@ export const fetchPedidos = async () => {
 
 // Função para atualizar status do pedido
 export const updatePedidoStatus = async (id: number, status: string) => {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase não configurado')
+  }
+  
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('pedidos')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
@@ -95,8 +122,13 @@ export const updatePedidoStatus = async (id: number, status: string) => {
 
 // Função para escutar mudanças em tempo real
 export const subscribeToChanges = (callback: (payload: any) => void) => {
+  if (!isSupabaseConfigured()) {
+    console.warn('⚠️ Supabase não configurado. Subscription não será criada.')
+    return null
+  }
+  
   try {
-    return supabase
+    return supabase!
       .channel('pedidos_changes')
       .on('postgres_changes', 
         { 
@@ -115,8 +147,12 @@ export const subscribeToChanges = (callback: (payload: any) => void) => {
 
 // Função para testar conexão
 export const testConnection = async () => {
+  if (!isSupabaseConfigured()) {
+    return false
+  }
+  
   try {
-    const { data, error } = await supabase.from('pedidos').select('count').limit(1)
+    const { data, error } = await supabase!.from('pedidos').select('count').limit(1)
     if (error) throw error
     return true
   } catch (error) {
