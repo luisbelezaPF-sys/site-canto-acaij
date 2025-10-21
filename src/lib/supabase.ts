@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '[COLE_AQUI_SUA_URL]'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '[COLE_AQUI_SUA_ANON_KEY]'
+// Configuração segura para build - usa valores padrão válidos se env vars não estiverem definidas
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -29,67 +30,87 @@ export interface PedidoSupabase {
 export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
   console.log('🚀 Inserindo pedido no Supabase:', pedido)
   
-  const { data, error } = await supabase
-    .from('pedidos')
-    .insert([pedido])
-    .select()
-  
-  if (error) {
-    console.error('❌ Erro ao inserir pedido:', error)
+  try {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .insert([pedido])
+      .select()
+    
+    if (error) {
+      console.error('❌ Erro ao inserir pedido:', error)
+      throw error
+    }
+    
+    console.log('✅ Pedido inserido com sucesso:', data)
+    return data
+  } catch (error) {
+    console.error('❌ Erro na função insertPedido:', error)
     throw error
   }
-  
-  console.log('✅ Pedido inserido com sucesso:', data)
-  return data
 }
 
 // Função para buscar todos os pedidos
 export const fetchPedidos = async () => {
   console.log('📥 Buscando pedidos do Supabase...')
   
-  const { data, error } = await supabase
-    .from('pedidos')
-    .select('*')
-    .order('created_at', { ascending: false })
-  
-  if (error) {
-    console.error('❌ Erro ao buscar pedidos:', error)
-    throw error
+  try {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('❌ Erro ao buscar pedidos:', error)
+      throw error
+    }
+    
+    console.log(`✅ ${data?.length || 0} pedidos encontrados`)
+    return data
+  } catch (error) {
+    console.error('❌ Erro na função fetchPedidos:', error)
+    return []
   }
-  
-  console.log(`✅ ${data?.length || 0} pedidos encontrados`)
-  return data
 }
 
 // Função para atualizar status do pedido
 export const updatePedidoStatus = async (id: number, status: string) => {
-  const { data, error } = await supabase
-    .from('pedidos')
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-  
-  if (error) {
-    console.error('❌ Erro ao atualizar status:', error)
+  try {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+    
+    if (error) {
+      console.error('❌ Erro ao atualizar status:', error)
+      throw error
+    }
+    
+    return data
+  } catch (error) {
+    console.error('❌ Erro na função updatePedidoStatus:', error)
     throw error
   }
-  
-  return data
 }
 
 // Função para escutar mudanças em tempo real
 export const subscribeToChanges = (callback: (payload: any) => void) => {
-  return supabase
-    .channel('pedidos_changes')
-    .on('postgres_changes', 
-      { 
-        event: '*', 
-        schema: 'public', 
-        table: 'pedidos' 
-      }, 
-      callback
-    )
-    .subscribe()
+  try {
+    return supabase
+      .channel('pedidos_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'pedidos' 
+        }, 
+        callback
+      )
+      .subscribe()
+  } catch (error) {
+    console.error('❌ Erro ao configurar subscription:', error)
+    return null
+  }
 }
 
 // Função para testar conexão
