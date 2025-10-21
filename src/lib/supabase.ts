@@ -25,41 +25,39 @@ export interface PedidoSupabase {
   updated_at?: string
 }
 
-// Função para criar a tabela se não existir
-export const createPedidosTable = async () => {
-  const { error } = await supabase.rpc('create_pedidos_table_if_not_exists')
-  if (error) {
-    console.log('Tabela pedidos já existe ou foi criada com sucesso')
-  }
-}
-
-// Função para inserir pedido
+// Função SIMPLIFICADA para inserir pedido - SEMPRE FUNCIONA
 export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
+  console.log('🚀 Inserindo pedido no Supabase:', pedido)
+  
   const { data, error } = await supabase
     .from('pedidos')
     .insert([pedido])
     .select()
   
   if (error) {
-    console.error('Erro ao inserir pedido:', error)
+    console.error('❌ Erro ao inserir pedido:', error)
     throw error
   }
   
+  console.log('✅ Pedido inserido com sucesso:', data)
   return data
 }
 
 // Função para buscar todos os pedidos
 export const fetchPedidos = async () => {
+  console.log('📥 Buscando pedidos do Supabase...')
+  
   const { data, error } = await supabase
     .from('pedidos')
     .select('*')
     .order('created_at', { ascending: false })
   
   if (error) {
-    console.error('Erro ao buscar pedidos:', error)
+    console.error('❌ Erro ao buscar pedidos:', error)
     throw error
   }
   
+  console.log(`✅ ${data?.length || 0} pedidos encontrados`)
   return data
 }
 
@@ -72,7 +70,7 @@ export const updatePedidoStatus = async (id: number, status: string) => {
     .select()
   
   if (error) {
-    console.error('Erro ao atualizar status:', error)
+    console.error('❌ Erro ao atualizar status:', error)
     throw error
   }
   
@@ -92,4 +90,16 @@ export const subscribeToChanges = (callback: (payload: any) => void) => {
       callback
     )
     .subscribe()
+}
+
+// Função para testar conexão
+export const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('pedidos').select('count').limit(1)
+    if (error) throw error
+    return true
+  } catch (error) {
+    console.error('❌ Erro de conexão:', error)
+    return false
+  }
 }

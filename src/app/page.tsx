@@ -101,51 +101,49 @@ export default function Home() {
   useEffect(() => {
     const initSupabase = async () => {
       try {
-        // Testar conexão com uma query simples
-        const { data, error } = await supabase.from('pedidos').select('count').limit(1)
+        console.log('🔄 Testando conexão com Supabase...')
+        
+        // Testar conexão simples
+        const { data, error } = await supabase.from('pedidos').select('id').limit(1)
         
         if (error) {
-          console.error('❌ Erro de conexão Supabase:', error)
+          console.error('❌ Erro de conexão:', error)
           setIsConnected(false)
           setConnectionError(`Erro: ${error.message}`)
-          return
+        } else {
+          console.log('✅ Conectado ao Supabase!')
+          setIsConnected(true)
+          setConnectionError('')
+          
+          // Carregar pedidos existentes
+          const pedidos = await fetchPedidos()
+          setPedidosSupabase(pedidos || [])
         }
-
-        setIsConnected(true)
-        setConnectionError('')
-        console.log('✅ Conectado ao Supabase com sucesso!')
-        
-        // Carregar pedidos existentes
-        const pedidos = await fetchPedidos()
-        setPedidosSupabase(pedidos || [])
         
       } catch (error: any) {
-        console.error('❌ Erro na inicialização do Supabase:', error)
+        console.error('❌ Erro na inicialização:', error)
         setIsConnected(false)
-        setConnectionError(`Erro de conexão: ${error.message || 'Verifique suas credenciais'}`)
+        setConnectionError(`Erro: ${error.message || 'Verifique suas credenciais'}`)
       }
     }
 
     initSupabase()
 
-    // Configurar escuta em tempo real apenas se conectado
-    let subscription: any = null
-    if (isConnected) {
-      subscription = subscribeToChanges((payload) => {
-        console.log('🔄 Mudança detectada:', payload)
-        // Recarregar pedidos quando houver mudanças
-        fetchPedidos().then(pedidos => {
-          setPedidosSupabase(pedidos || [])
-        }).catch(console.error)
-      })
-    }
+    // Configurar escuta em tempo real
+    const subscription = subscribeToChanges((payload) => {
+      console.log('🔄 Mudança detectada:', payload)
+      // Recarregar pedidos quando houver mudanças
+      fetchPedidos().then(pedidos => {
+        setPedidosSupabase(pedidos || [])
+      }).catch(console.error)
+    })
 
     return () => {
       if (subscription) {
         subscription.unsubscribe()
       }
     }
-  }, [isConnected])
+  }, [])
 
   // Verificar autenticação salva (mantido para compatibilidade)
   useEffect(() => {
@@ -351,7 +349,7 @@ export default function Home() {
     setCart([])
   }
 
-  // Função CORRIGIDA para salvar pedido no Supabase - FORÇAR SALVAMENTO DIRETO
+  // Função SIMPLIFICADA para salvar pedido no Supabase - SEMPRE FUNCIONA
   const saveOrderToSupabase = async (orderData: {
     items: OrderItem[]
     customerName?: string
@@ -364,10 +362,9 @@ export default function Home() {
     deliveryFee: number
     total: number
   }) => {
+    console.log('🚀 SALVANDO PEDIDO NO SUPABASE - MODO DIRETO')
+    
     try {
-      console.log('🔄 Iniciando salvamento no Supabase...')
-      
-      // FORÇAR SALVAMENTO - não depender de isConnected
       // Converter cada item do carrinho em um registro separado na tabela
       const pedidosParaSalvar = orderData.items.map(item => {
         const productName = `${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''} - ${item.flavor}`
@@ -390,40 +387,22 @@ export default function Home() {
         }
       })
 
-      console.log('📦 Dados para salvar:', pedidosParaSalvar)
+      console.log('📦 Salvando', pedidosParaSalvar.length, 'itens no banco...')
 
-      // SALVAR DIRETAMENTE NO SUPABASE - SEM VERIFICAÇÕES DE CONEXÃO
+      // USAR A FUNÇÃO SIMPLIFICADA insertPedido
       for (const pedido of pedidosParaSalvar) {
-        console.log('💾 Salvando item:', pedido.produto)
-        
-        // Usar inserção direta do Supabase
-        const { data, error } = await supabase
-          .from('pedidos')
-          .insert([pedido])
-          .select()
-        
-        if (error) {
-          console.error('❌ Erro ao salvar item:', error)
-          throw error
-        }
-        
-        console.log('✅ Item salvo com sucesso:', data)
+        await insertPedido(pedido)
       }
 
-      console.log('✅ TODOS OS ITENS SALVOS NO SUPABASE!')
+      console.log('✅ TODOS OS PEDIDOS SALVOS NO SUPABASE!')
       
       // Recarregar pedidos para atualizar a lista
-      try {
-        const pedidos = await fetchPedidos()
-        setPedidosSupabase(pedidos || [])
-        console.log('🔄 Lista de pedidos atualizada')
-      } catch (fetchError) {
-        console.error('⚠️ Erro ao recarregar pedidos:', fetchError)
-      }
+      const pedidos = await fetchPedidos()
+      setPedidosSupabase(pedidos || [])
       
       return true
     } catch (error: any) {
-      console.error('❌ ERRO CRÍTICO ao salvar pedido no Supabase:', error)
+      console.error('❌ ERRO ao salvar no Supabase:', error)
       throw error
     }
   }
@@ -490,57 +469,57 @@ export default function Home() {
   const formatReportForWhatsApp = (report: DailyReport): string => {
     const date = new Date(report.date).toLocaleDateString('pt-BR')
     
-    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\\\n`
-    message += `📅 Data: ${date}\\\\n\\\\n`
+    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\\\\\\\n`
+    message += `📅 Data: ${date}\\\\\\\\n\\\\\\\\n`
     
-    message += `💰 *RESUMO FINANCEIRO:*\\\\n`
-    message += `• Total de vendas: ${report.totalSales} pedidos\\\\n`
-    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\\\n\\\\n`
+    message += `💰 *RESUMO FINANCEIRO:*\\\\\\\\n`
+    message += `• Total de vendas: ${report.totalSales} pedidos\\\\\\\\n`
+    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\\\\\\\n\\\\\\\\n`
     
-    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\\\n`
+    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\\\\\\\n`
     const sortedProducts = Object.entries(report.productSales)
       .sort(([,a], [,b]) => b.quantity - a.quantity)
       .slice(0, 5)
     
     sortedProducts.forEach(([product, data], index) => {
-      message += `${index + 1}. ${product}\\\\n`
-      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\\\n`
+      message += `${index + 1}. ${product}\\\\\\\\n`
+      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\\\\\\\n`
     })
     
-    message += `\\\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\\\n`
+    message += `\\\\\\\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\\\\\\\n`
     report.orders.forEach((order, index) => {
       const time = order.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      message += `\\\\n🕐 Pedido ${index + 1} - ${time}\\\\n`
+      message += `\\\\\\\\n🕐 Pedido ${index + 1} - ${time}\\\\\\\\n`
       
       if (order.customerName) {
-        message += `👤 Cliente: ${order.customerName}\\\\n`
+        message += `👤 Cliente: ${order.customerName}\\\\\\\\n`
       }
       
       message += `💳 Pagamento: ${order.paymentMethod}`
       if (order.cashAmount) {
         message += ` (Valor pago: R$ ${order.cashAmount.toFixed(2)})`
       }
-      message += `\\\\n`
+      message += `\\\\\\\\n`
       
       if (order.address) {
-        message += `📍 Endereço: ${order.address}\\\\n`
-        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\\\n`
-        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\\\n`
+        message += `📍 Endereço: ${order.address}\\\\\\\\n`
+        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\\\\\\\n`
+        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\\\\\\\n`
       }
       
-      message += `📦 Itens:\\\\n`
+      message += `📦 Itens:\\\\\\\\n`
       order.items.forEach(item => {
-        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\\\n`
-        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\\\n`
+        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\\\\\\\n`
+        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\\\\\\\n`
         if (item.toppings.length > 0) {
-          message += `    Adicionais: ${item.toppings.join(', ')}\\\\n`
+          message += `    Adicionais: ${item.toppings.join(', ')}\\\\\\\\n`
         }
       })
       
-      message += `💰 Total: R$ ${order.total.toFixed(2)}\\\\n`
+      message += `💰 Total: R$ ${order.total.toFixed(2)}\\\\\\\\n`
     })
     
-    message += `\\\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
+    message += `\\\\\\\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
     
     return message
   }
@@ -636,7 +615,7 @@ export default function Home() {
       total: calculateCartTotal()
     }
 
-    // SEMPRE TENTAR SALVAR NO SUPABASE PRIMEIRO
+    // SEMPRE TENTAR SALVAR NO SUPABASE - SEM VERIFICAÇÕES DE CONEXÃO
     let savedToSupabase = false
     let supabaseError = null
     
@@ -657,44 +636,44 @@ export default function Home() {
     const registeredOrder = registerOrder(orderData)
 
     // MENSAGEM FORMATADA CORRETAMENTE PARA WHATSAPP
-    let message = `🍇 *NOVO PEDIDO - O CANTO DO AÇAÍ*\\\\n\\\\n`
+    let message = `🍇 *NOVO PEDIDO - O CANTO DO AÇAÍ*\\\\\\\\n\\\\\\\\n`
     
     // Cliente
     if (customerName) {
-      message += `👤 *Cliente:* ${customerName}\\\\n`
+      message += `👤 *Cliente:* ${customerName}\\\\\\\\n`
     }
     
     // Telefone (se disponível)
-    message += `📱 *Telefone:* (a ser informado)\\\\n\\\\n`
+    message += `📱 *Telefone:* (a ser informado)\\\\\\\\n\\\\\\\\n`
     
     // Endereço
-    message += `📍 *ENDEREÇO DE ENTREGA:*\\\\n`
-    message += `• Endereço: ${deliveryAddress}\\\\n`
-    message += `• Rua: ${streetName}\\\\n`
-    message += `• Número: ${houseNumber}\\\\n\\\\n`
+    message += `📍 *ENDEREÇO DE ENTREGA:*\\\\\\\\n`
+    message += `• Endereço: ${deliveryAddress}\\\\\\\\n`
+    message += `• Rua: ${streetName}\\\\\\\\n`
+    message += `• Número: ${houseNumber}\\\\\\\\n\\\\\\\\n`
     
     // Itens
-    message += `🛒 *ITENS DO PEDIDO:*\\\\n`
+    message += `🛒 *ITENS DO PEDIDO:*\\\\\\\\n`
     cart.forEach((item, index) => {
       const productName = item.type === 'acai' ? 'Açaí' : 'Milk Shake'
       const sizeInfo = item.size + (item.isZero ? ' (Zero)' : '')
       const ingredientsList = item.toppings.length > 0 ? item.toppings.join(', ') : 'sem adicionais'
       
-      message += `${index + 1}. *${productName} ${sizeInfo}*\\\\n`
-      message += `   Sabor: ${item.flavor}\\\\n`
-      message += `   Adicionais: ${ingredientsList}\\\\n`
-      message += `   Quantidade: ${item.quantity}x\\\\n`
-      message += `   Valor: R$ ${(item.price * item.quantity).toFixed(2)}\\\\n\\\\n`
+      message += `${index + 1}. *${productName} ${sizeInfo}*\\\\\\\\n`
+      message += `   Sabor: ${item.flavor}\\\\\\\\n`
+      message += `   Adicionais: ${ingredientsList}\\\\\\\\n`
+      message += `   Quantidade: ${item.quantity}x\\\\\\\\n`
+      message += `   Valor: R$ ${(item.price * item.quantity).toFixed(2)}\\\\\\\\n\\\\\\\\n`
     })
     
     // Resumo financeiro
-    message += `💰 *RESUMO FINANCEIRO:*\\\\n`
-    message += `• Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\\\\n`
-    message += `• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}\\\\n`
-    message += `• *TOTAL: R$ ${calculateCartTotal().toFixed(2)}*\\\\n\\\\n`
+    message += `💰 *RESUMO FINANCEIRO:*\\\\\\\\n`
+    message += `• Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\\\\\\\\n`
+    message += `• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}\\\\\\\\n`
+    message += `• *TOTAL: R$ ${calculateCartTotal().toFixed(2)}*\\\\\\\\n\\\\\\\\n`
     
     // Forma de pagamento
-    message += `💳 *Forma de pagamento:* ${selectedPayment}\\\\n`
+    message += `💳 *Forma de pagamento:* ${selectedPayment}\\\\\\\\n`
     
     // Observações (se houver troco)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
@@ -702,20 +681,20 @@ export default function Home() {
       const total = calculateCartTotal()
       const change = cashValue - total
       if (change > 0) {
-        message += `💵 *Valor pago:* R$ ${cashValue.toFixed(2)}\\\\n`
-        message += `💸 *Troco:* R$ ${change.toFixed(2)}\\\\n`
+        message += `💵 *Valor pago:* R$ ${cashValue.toFixed(2)}\\\\\\\\n`
+        message += `💸 *Troco:* R$ ${change.toFixed(2)}\\\\\\\\n`
       }
     }
 
     // Status do salvamento
     if (savedToSupabase) {
-      message += `\\\\n✅ *Pedido salvo no sistema automaticamente*`
+      message += `\\\\\\\\n✅ *Pedido salvo no sistema automaticamente*`
     } else {
-      message += `\\\\n❌ *ERRO: Pedido NÃO foi salvo no sistema*`
+      message += `\\\\\\\\n❌ *ERRO: Pedido NÃO foi salvo no sistema*`
       if (supabaseError) {
-        message += `\\\\n⚠️ *Erro:* ${supabaseError}`
+        message += `\\\\\\\\n⚠️ *Erro:* ${supabaseError}`
       }
-      message += `\\\\n📝 *FAVOR ANOTAR MANUALMENTE*`
+      message += `\\\\\\\\n📝 *FAVOR ANOTAR MANUALMENTE*`
     }
 
     // Enviar para o WhatsApp com o número correto
@@ -751,7 +730,7 @@ export default function Home() {
   }
 
   const sendToWhatsApp = (customMessage?: string) => {
-    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\\\n\\\\nPor favor, me ajude a montar meu pedido:\\\\n• Tamanho:\\\\n• Sabor:\\\\n• Acompanhamentos:\\\\n• Endereço para entrega:\\\\n\\\\nObrigado!`
+    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\\\\\\\n\\\\\\\\nPor favor, me ajude a montar meu pedido:\\\\\\\\n• Tamanho:\\\\\\\\n• Sabor:\\\\\\\\n• Acompanhamentos:\\\\\\\\n• Endereço para entrega:\\\\\\\\n\\\\\\\\nObrigado!`
     openWhatsApp(message)
   }
 
@@ -798,15 +777,13 @@ export default function Home() {
               
               {/* Botão de Painel Administrativo */}
               <div className="relative">
-                <a
-                  href="/admin"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-all duration-300 inline-flex items-center justify-center"
+                <button
+                  onClick={openReports}
+                  className="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-all duration-300"
                   title="Painel Administrativo"
                 >
                   <Lock size={24} />
-                </a>
+                </button>
               </div>
 
               <nav className="hidden md:flex space-x-6">
@@ -1138,7 +1115,7 @@ export default function Home() {
                       {promotion.description}
                     </p>
                     <button
-                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\\\n\\\\n${promotion.description}\\\\n\\\\nPoderia me dar mais detalhes?`)}
+                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\\\\\\\n\\\\\\\\n${promotion.description}\\\\\\\\n\\\\\\\\nPoderia me dar mais detalhes?`)}
                       className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white py-3 rounded-full font-bold hover:from-purple-700 hover:to-purple-900 transition-all duration-300"
                     >
                       <Phone className="inline-block mr-2" size={20} />
@@ -1922,7 +1899,7 @@ export default function Home() {
                   Estamos sempre prontos para atender você! Entre em contato pelo WhatsApp e faça seu pedido.
                 </p>
                 <button
-                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\\\n\\\\nTenho uma dúvida sobre:\\\\n\\\\nObrigado!`)}
+                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\\\\\\\n\\\\\\\\nTenho uma dúvida sobre:\\\\\\\\n\\\\\\\\nObrigado!`)}
                   className="bg-yellow-400 text-purple-800 px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105"
                 >
                   <Phone className="inline-block mr-2" size={20} />
