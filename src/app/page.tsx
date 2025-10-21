@@ -92,6 +92,7 @@ export default function Home() {
   // Estados para Supabase
   const [pedidosSupabase, setPedidosSupabase] = useState<PedidoSupabase[]>([])
   const [isConnected, setIsConnected] = useState(false)
+  const [connectionError, setConnectionError] = useState('')
 
   const deliveryFee = 3.00
   const whatsappNumber = "+5535997440729"
@@ -100,40 +101,51 @@ export default function Home() {
   useEffect(() => {
     const initSupabase = async () => {
       try {
-        // Testar conexão
+        // Testar conexão com uma query simples
         const { data, error } = await supabase.from('pedidos').select('count').limit(1)
-        if (!error) {
-          setIsConnected(true)
-          console.log('✅ Conectado ao Supabase com sucesso!')
-          
-          // Carregar pedidos existentes
-          const pedidos = await fetchPedidos()
-          setPedidosSupabase(pedidos || [])
-        } else {
-          console.error('❌ Erro ao conectar com Supabase:', error)
+        
+        if (error) {
+          console.error('❌ Erro de conexão Supabase:', error)
           setIsConnected(false)
+          setConnectionError(`Erro: ${error.message}`)
+          return
         }
-      } catch (error) {
+
+        setIsConnected(true)
+        setConnectionError('')
+        console.log('✅ Conectado ao Supabase com sucesso!')
+        
+        // Carregar pedidos existentes
+        const pedidos = await fetchPedidos()
+        setPedidosSupabase(pedidos || [])
+        
+      } catch (error: any) {
         console.error('❌ Erro na inicialização do Supabase:', error)
         setIsConnected(false)
+        setConnectionError(`Erro de conexão: ${error.message || 'Verifique suas credenciais'}`)
       }
     }
 
     initSupabase()
 
-    // Configurar escuta em tempo real
-    const subscription = subscribeToChanges((payload) => {
-      console.log('🔄 Mudança detectada:', payload)
-      // Recarregar pedidos quando houver mudanças
-      fetchPedidos().then(pedidos => {
-        setPedidosSupabase(pedidos || [])
+    // Configurar escuta em tempo real apenas se conectado
+    let subscription: any = null
+    if (isConnected) {
+      subscription = subscribeToChanges((payload) => {
+        console.log('🔄 Mudança detectada:', payload)
+        // Recarregar pedidos quando houver mudanças
+        fetchPedidos().then(pedidos => {
+          setPedidosSupabase(pedidos || [])
+        }).catch(console.error)
       })
-    })
+    }
 
     return () => {
-      subscription.unsubscribe()
+      if (subscription) {
+        subscription.unsubscribe()
+      }
     }
-  }, [])
+  }, [isConnected])
 
   // Verificar autenticação salva (mantido para compatibilidade)
   useEffect(() => {
@@ -339,7 +351,7 @@ export default function Home() {
     setCart([])
   }
 
-  // Função para salvar pedido no Supabase
+  // Função CORRIGIDA para salvar pedido no Supabase
   const saveOrderToSupabase = async (orderData: {
     items: OrderItem[]
     customerName?: string
@@ -353,6 +365,10 @@ export default function Home() {
     total: number
   }) => {
     try {
+      if (!isConnected) {
+        throw new Error('Não conectado ao Supabase')
+      }
+
       // Converter cada item do carrinho em um registro separado na tabela
       const pedidosParaSalvar = orderData.items.map(item => {
         const productName = `${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''} - ${item.flavor}`
@@ -363,7 +379,7 @@ export default function Home() {
           quantidade: item.quantity,
           valor: item.price,
           nome_cliente: orderData.customerName || null,
-          email_cliente: null, // Pode ser adicionado futuramente
+          email_cliente: null,
           status: 'pendente',
           endereco: orderData.address || null,
           rua: orderData.streetName || null,
@@ -377,19 +393,20 @@ export default function Home() {
 
       // Salvar todos os itens no Supabase
       for (const pedido of pedidosParaSalvar) {
-        await insertPedido(pedido)
+        const result = await insertPedido(pedido)
+        console.log('✅ Item salvo no Supabase:', result)
       }
 
-      console.log('✅ Pedido salvo no Supabase com sucesso!')
+      console.log('✅ Pedido completo salvo no Supabase!')
       
       // Recarregar pedidos
       const pedidos = await fetchPedidos()
       setPedidosSupabase(pedidos || [])
       
       return true
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao salvar pedido no Supabase:', error)
-      return false
+      throw error // Propagar o erro para ser tratado na função que chama
     }
   }
 
@@ -587,6 +604,19 @@ export default function Home() {
       return
     }
 
+    // Verificar conexão antes de tentar salvar
+    if (!isConnected) {
+      const confirmSend = confirm(
+        'ATENÇÃO: Não foi possível conectar ao banco de dados.\n\n' +
+        'Seu pedido será enviado pelo WhatsApp, mas não será salvo no sistema.\n\n' +
+        'Deseja continuar mesmo assim?'
+      )
+      
+      if (!confirmSend) {
+        return
+      }
+    }
+
     // Dados do pedido
     const orderData = {
       items: [...cart],
@@ -601,50 +631,61 @@ export default function Home() {
       total: calculateCartTotal()
     }
 
-    // Salvar no Supabase
-    const savedToSupabase = await saveOrderToSupabase(orderData)
-    
-    if (savedToSupabase) {
-      console.log('✅ Pedido salvo no Supabase!')
-    } else {
-      console.log('⚠️ Erro ao salvar no Supabase, mas continuando com WhatsApp...')
+    // Tentar salvar no Supabase
+    let savedToSupabase = false
+    if (isConnected) {
+      try {
+        await saveOrderToSupabase(orderData)
+        savedToSupabase = true
+        console.log('✅ Pedido salvo no Supabase!')
+      } catch (error) {
+        console.error('❌ Erro ao salvar no Supabase:', error)
+        alert('Erro ao salvar no banco de dados, mas o pedido será enviado pelo WhatsApp.')
+      }
     }
 
     // Registrar pedido local (para relatórios)
     const registeredOrder = registerOrder(orderData)
 
     // MENSAGEM FORMATADA CORRETAMENTE PARA WHATSAPP
-    let message = `Novo pedido\n`
+    let message = `🍇 *NOVO PEDIDO - O CANTO DO AÇAÍ*\\n\\n`
     
     // Cliente
     if (customerName) {
-      message += `Cliente: ${customerName}\n`
+      message += `👤 *Cliente:* ${customerName}\\n`
     }
     
     // Telefone (se disponível)
-    message += `Telefone: (a ser informado)\n`
+    message += `📱 *Telefone:* (a ser informado)\\n\\n`
     
     // Endereço
-    message += `Endereco: ${deliveryAddress}\n`
-    message += `Rua: ${streetName}\n`
-    message += `Numero: ${houseNumber}\n\n`
+    message += `📍 *ENDEREÇO DE ENTREGA:*\\n`
+    message += `• Endereço: ${deliveryAddress}\\n`
+    message += `• Rua: ${streetName}\\n`
+    message += `• Número: ${houseNumber}\\n\\n`
     
     // Itens
-    message += `Itens:\n`
-    cart.forEach((item) => {
-      const productName = item.type === 'acai' ? 'Acai' : 'Milk Shake'
-      const sizeInfo = item.size + (item.isZero ? ' Zero' : '')
+    message += `🛒 *ITENS DO PEDIDO:*\\n`
+    cart.forEach((item, index) => {
+      const productName = item.type === 'acai' ? 'Açaí' : 'Milk Shake'
+      const sizeInfo = item.size + (item.isZero ? ' (Zero)' : '')
       const ingredientsList = item.toppings.length > 0 ? item.toppings.join(', ') : 'sem adicionais'
       
-      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}\n`
+      message += `${index + 1}. *${productName} ${sizeInfo}*\\n`
+      message += `   Sabor: ${item.flavor}\\n`
+      message += `   Adicionais: ${ingredientsList}\\n`
+      message += `   Quantidade: ${item.quantity}x\\n`
+      message += `   Valor: R$ ${(item.price * item.quantity).toFixed(2)}\\n\\n`
     })
-    message += `\n`
     
-    // Total
-    message += `Total: R$ ${calculateCartTotal().toFixed(2)}\n`
+    // Resumo financeiro
+    message += `💰 *RESUMO FINANCEIRO:*\\n`
+    message += `• Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\\n`
+    message += `• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}\\n`
+    message += `• *TOTAL: R$ ${calculateCartTotal().toFixed(2)}*\\n\\n`
     
     // Forma de pagamento
-    message += `Forma de pagamento: ${selectedPayment}\n`
+    message += `💳 *Forma de pagamento:* ${selectedPayment}\\n`
     
     // Observações (se houver troco)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
@@ -652,8 +693,16 @@ export default function Home() {
       const total = calculateCartTotal()
       const change = cashValue - total
       if (change > 0) {
-        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}\n`
+        message += `💵 *Valor pago:* R$ ${cashValue.toFixed(2)}\\n`
+        message += `💸 *Troco:* R$ ${change.toFixed(2)}\\n`
       }
+    }
+
+    // Status do salvamento
+    if (savedToSupabase) {
+      message += `\\n✅ *Pedido salvo no sistema automaticamente*`
+    } else {
+      message += `\\n⚠️ *Pedido não foi salvo no sistema - favor anotar manualmente*`
     }
 
     // Enviar para o WhatsApp com o número correto
@@ -671,7 +720,11 @@ export default function Home() {
     setHouseNumber('')
     setCustomerName('')
     
-    alert('Pedido enviado com sucesso! Aguarde nossa resposta no WhatsApp.')
+    alert(
+      savedToSupabase 
+        ? 'Pedido enviado e salvo com sucesso! ✅' 
+        : 'Pedido enviado pelo WhatsApp! ⚠️ (Não foi possível salvar no sistema)'
+    )
   }
 
   const sendCartToWhatsApp = () => {
@@ -691,16 +744,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-purple-50 to-yellow-100">
-      {/* Status de Conexão Supabase */}
+      {/* Status de Conexão Supabase - MELHORADO */}
       {isConnected && (
-        <div className="bg-green-500 text-white text-center py-2 text-sm">
-          ✅ Conectado ao Supabase - Dados sincronizados em tempo real
+        <div className="bg-green-500 text-white text-center py-2 text-sm font-medium">
+          ✅ Conectado ao banco de dados - Pedidos sendo salvos automaticamente
         </div>
       )}
       
       {!isConnected && (
-        <div className="bg-orange-500 text-white text-center py-2 text-sm">
-          ⚠️ Conectando ao banco de dados... Pedidos serão salvos quando conectar
+        <div className="bg-red-500 text-white text-center py-3 text-sm">
+          <div className="font-bold">❌ ERRO DE CONEXÃO COM BANCO DE DADOS</div>
+          <div className="text-xs mt-1">
+            {connectionError || 'Pedidos não serão salvos no sistema. Configure suas credenciais do Supabase.'}
+          </div>
         </div>
       )}
 
