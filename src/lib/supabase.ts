@@ -9,10 +9,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Variáveis do Supabase não configuradas. Usando cliente mock.')
 }
 
-// Cria cliente apenas se as variáveis estiverem definidas
+// Cria cliente SEMPRE - mesmo se as variáveis não estiverem definidas
 export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    })
+  : createClient('https://placeholder.supabase.co', 'placeholder-key')
 
 // Tipos para o banco de dados
 export interface PedidoSupabase {
@@ -36,7 +41,7 @@ export interface PedidoSupabase {
 
 // Função para verificar se Supabase está configurado
 export const isSupabaseConfigured = () => {
-  return supabase !== null && supabaseUrl && supabaseAnonKey
+  return !!(supabaseUrl && supabaseAnonKey)
 }
 
 // Função SEGURA para inserir pedido
@@ -49,7 +54,7 @@ export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_
   }
   
   try {
-    const { data, error } = await supabase!
+    const { data, error } = await supabase
       .from('pedidos')
       .insert([pedido])
       .select()
@@ -77,7 +82,7 @@ export const fetchPedidos = async () => {
   }
   
   try {
-    const { data, error } = await supabase!
+    const { data, error } = await supabase
       .from('pedidos')
       .select('*')
       .order('created_at', { ascending: false })
@@ -102,7 +107,7 @@ export const updatePedidoStatus = async (id: number, status: string) => {
   }
   
   try {
-    const { data, error } = await supabase!
+    const { data, error } = await supabase
       .from('pedidos')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
@@ -128,7 +133,7 @@ export const subscribeToChanges = (callback: (payload: any) => void) => {
   }
   
   try {
-    return supabase!
+    return supabase
       .channel('pedidos_changes')
       .on('postgres_changes', 
         { 
@@ -145,18 +150,31 @@ export const subscribeToChanges = (callback: (payload: any) => void) => {
   }
 }
 
-// Função para testar conexão
+// Função para testar conexão - MELHORADA
 export const testConnection = async () => {
   if (!isSupabaseConfigured()) {
+    console.log('❌ Supabase não configurado - variáveis de ambiente ausentes')
     return false
   }
   
   try {
-    const { data, error } = await supabase!.from('pedidos').select('count').limit(1)
-    if (error) throw error
+    console.log('🔄 Testando conexão com Supabase...')
+    
+    // Teste simples de conexão
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('id')
+      .limit(1)
+    
+    if (error) {
+      console.error('❌ Erro de conexão:', error.message)
+      return false
+    }
+    
+    console.log('✅ Conexão com Supabase estabelecida com sucesso!')
     return true
-  } catch (error) {
-    console.error('❌ Erro de conexão:', error)
+  } catch (error: any) {
+    console.error('❌ Erro ao testar conexão:', error.message)
     return false
   }
 }

@@ -676,9 +676,10 @@ export default function AdminPanel() {
     }
   };
 
+  // Função para imprimir cupom fiscal - RESPONSIVA para celular e PC
   const printCoupon = (order: Order) => {
     const couponContent = `
-      <div style="width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; margin: 0; padding: 10px;">
+      <div style="width: 100%; max-width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; margin: 0 auto; padding: 10px; background: white;">
         <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
           <div style="font-size: 16px; font-weight: bold;">CANTO DO AÇAÍ</div>
           <div style="font-size: 10px;">Poço Fundo - MG</div>
@@ -731,54 +732,115 @@ export default function AdminPanel() {
       </div>
     `;
 
-    // Abrir janela de impressão formatada para papel térmico 80mm E computador
+    // Detectar se é dispositivo móvel
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Abrir janela de impressão otimizada para celular E computador
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
         <html>
           <head>
             <title>Cupom Fiscal - ${order.id}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-              @page {
-                size: 80mm auto;
-                margin: 0;
-              }
-              body {
+              * {
                 margin: 0;
                 padding: 0;
+                box-sizing: border-box;
+              }
+              
+              body {
                 font-family: 'Courier New', monospace;
                 font-size: 12px;
                 line-height: 1.2;
+                background: #f0f0f0;
+                padding: 10px;
               }
+              
+              .coupon-container {
+                max-width: 80mm;
+                margin: 0 auto;
+                background: white;
+                border: 1px solid #000;
+                padding: 10px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+              }
+              
+              /* Estilos para impressão */
               @media print {
                 body {
+                  background: white;
+                  padding: 0;
+                }
+                
+                .coupon-container {
+                  box-shadow: none;
+                  border: none;
+                  max-width: none;
                   width: 80mm;
                 }
-                /* Estilos para impressão em computador */
+                
+                /* Para impressoras térmicas */
                 @page {
-                  size: A4;
-                  margin: 20mm;
-                }
-                .coupon-container {
-                  max-width: 80mm;
-                  margin: 0 auto;
-                  border: 1px solid #000;
-                  padding: 10px;
+                  size: 80mm auto;
+                  margin: 0;
                 }
               }
-              @media screen {
-                /* Estilos para visualização na tela */
+              
+              /* Estilos específicos para celular */
+              @media screen and (max-width: 480px) {
                 body {
-                  background: #f0f0f0;
-                  padding: 20px;
+                  padding: 5px;
+                  font-size: 11px;
                 }
+                
                 .coupon-container {
-                  max-width: 80mm;
-                  margin: 0 auto;
-                  background: white;
-                  border: 1px solid #000;
-                  padding: 10px;
-                  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                  max-width: 100%;
+                  padding: 8px;
+                }
+                
+                .print-button {
+                  position: fixed;
+                  bottom: 20px;
+                  right: 20px;
+                  background: #7C3AED;
+                  color: white;
+                  border: none;
+                  padding: 15px 20px;
+                  border-radius: 50px;
+                  font-size: 16px;
+                  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+                  z-index: 1000;
+                }
+              }
+              
+              /* Estilos para computador */
+              @media screen and (min-width: 481px) {
+                .print-button {
+                  display: block;
+                  margin: 20px auto;
+                  background: #7C3AED;
+                  color: white;
+                  border: none;
+                  padding: 12px 24px;
+                  border-radius: 8px;
+                  font-size: 14px;
+                  cursor: pointer;
+                }
+                
+                .print-button:hover {
+                  background: #6D28D9;
+                }
+              }
+              
+              .no-print {
+                display: block;
+              }
+              
+              @media print {
+                .no-print {
+                  display: none !important;
                 }
               }
             </style>
@@ -787,6 +849,151 @@ export default function AdminPanel() {
             <div class="coupon-container">
               ${couponContent}
             </div>
+            
+            <button class="print-button no-print" onclick="window.print()">
+              🖨️ ${isMobile ? 'Imprimir' : 'Imprimir Cupom'}
+            </button>
+            
+            <script>
+              // Auto-print apenas em desktop
+              if (!${isMobile}) {
+                window.onload = function() {
+                  setTimeout(() => window.print(), 500);
+                }
+              }
+              
+              // Fechar janela após impressão
+              window.onafterprint = function() {
+                setTimeout(() => window.close(), 1000);
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
+  // Função para imprimir lista de pedidos
+  const printOrdersList = () => {
+    const ordersContent = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #7C3AED; margin-bottom: 10px;">🍇 CANTO DO AÇAÍ</h1>
+          <h2 style="color: #666; margin: 0;">Lista de Pedidos</h2>
+          <p style="color: #888; margin: 5px 0;">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+        
+        <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+          <h3 style="margin: 0 0 10px 0; color: #333;">📊 Resumo Geral</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+              <strong>Total de Pedidos:</strong> ${orders.length}
+            </div>
+            <div>
+              <strong>Em Preparo:</strong> ${orders.filter(o => o.status === 'em preparo').length}
+            </div>
+            <div>
+              <strong>Saiu para Entrega:</strong> ${orders.filter(o => o.status === 'saiu para entrega').length}
+            </div>
+            <div>
+              <strong>Entregues:</strong> ${orders.filter(o => o.status === 'entregue').length}
+            </div>
+          </div>
+        </div>
+
+        ${orders.map((order, index) => `
+          <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h3 style="margin: 0; color: #7C3AED;">Pedido #${order.id}</h3>
+              <span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; ${
+                order.status === 'em preparo' ? 'background: #FEF3C7; color: #92400E;' :
+                order.status === 'saiu para entrega' ? 'background: #DBEAFE; color: #1E40AF;' :
+                order.status === 'entregue' ? 'background: #D1FAE5; color: #065F46;' :
+                'background: #FEE2E2; color: #991B1B;'
+              }">
+                ${order.status.toUpperCase()}
+              </span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 15px;">
+              <div>
+                <p style="margin: 5px 0;"><strong>👤 Cliente:</strong> ${order.customerName}</p>
+                <p style="margin: 5px 0;"><strong>📱 Telefone:</strong> ${order.phone}</p>
+                <p style="margin: 5px 0;"><strong>📅 Data/Hora:</strong> ${order.date} às ${order.time}</p>
+                <p style="margin: 5px 0;"><strong>💳 Pagamento:</strong> ${order.paymentMethod}</p>
+                ${order.cashAmount ? `<p style="margin: 5px 0;"><strong>💵 Valor Pago:</strong> R$ ${order.cashAmount.toFixed(2)}</p>` : ''}
+              </div>
+              
+              ${order.address ? `
+                <div>
+                  <p style="margin: 5px 0;"><strong>📍 Endereço:</strong></p>
+                  <p style="margin: 5px 0; padding-left: 15px;">${order.address}</p>
+                  ${order.streetName ? `<p style="margin: 5px 0; padding-left: 15px;">Rua: ${order.streetName}</p>` : ''}
+                  ${order.houseNumber ? `<p style="margin: 5px 0; padding-left: 15px;">Nº: ${order.houseNumber}</p>` : ''}
+                </div>
+              ` : ''}
+            </div>
+            
+            <div style="border-top: 1px solid #eee; padding-top: 10px;">
+              <h4 style="margin: 0 0 10px 0; color: #333;">🛒 Itens do Pedido:</h4>
+              ${order.items.map(item => `
+                <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span><strong>${item.name}</strong> ${item.size ? `(${item.size})` : ''}</span>
+                    <span><strong>R$ ${(item.quantity * item.price).toFixed(2)}</strong></span>
+                  </div>
+                  <div style="font-size: 14px; color: #666; margin-top: 4px;">
+                    Qtd: ${item.quantity} x R$ ${item.price.toFixed(2)}
+                    ${item.flavor ? ` | Sabor: ${item.flavor}` : ''}
+                  </div>
+                  ${item.extras?.length ? `<div style="font-size: 12px; color: #888;">Extras: ${item.extras.join(', ')}</div>` : ''}
+                </div>
+              `).join('')}
+              
+              <div style="text-align: right; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
+                <p style="margin: 5px 0; font-size: 18px;"><strong>💰 TOTAL: R$ ${order.total.toFixed(2)}</strong></p>
+                ${order.hasFiscalCoupon ? '<p style="margin: 5px 0; color: #059669; font-size: 12px;">📄 Cupom Fiscal Disponível</p>' : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+        
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #7C3AED; color: #666;">
+          <p>📄 Relatório gerado automaticamente pelo sistema O Canto do Açaí</p>
+          <p style="font-size: 12px;">Total de ${orders.length} pedidos listados</p>
+        </div>
+      </div>
+    `;
+
+    // Abrir janela de impressão
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Lista de Pedidos - Canto do Açaí</title>
+            <style>
+              @page {
+                size: A4;
+                margin: 15mm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.4;
+              }
+              @media print {
+                .no-print { display: none; }
+                h1, h2, h3 { page-break-after: avoid; }
+                div { page-break-inside: avoid; }
+              }
+            </style>
+          </head>
+          <body>
+            ${ordersContent}
             <script>
               window.onload = function() {
                 window.print();
@@ -1268,104 +1475,197 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* Aba Cupons Fiscais */}
+        {/* Aba Cupons Fiscais - NOVA IMPLEMENTAÇÃO RESPONSIVA */}
         {activeTab === 'cupons' && (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col md:flex-row md:items-center justify-between">
+                <div className="mb-4 md:mb-0">
                   <h3 className="text-xl font-semibold mb-2">📄 Sistema de Cupons Fiscais</h3>
                   <p className="text-green-100">
-                    Todos os pedidos enviados pelo site geram automaticamente cupons fiscais para impressão
+                    Todos os pedidos geram automaticamente cupons fiscais para impressão em celular e computador
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-center md:text-right">
                   <div className="text-3xl font-bold">{ordersWithCoupons.length}</div>
                   <div className="text-green-100">Cupons Disponíveis</div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Cupons Fiscais Disponíveis para Impressão</h3>
-              <div className="space-y-4">
+            {/* Botões de Ação Rápida */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => {
+                  ordersWithCoupons.forEach(order => printCoupon(order));
+                }}
+                className="bg-purple-600 text-white px-6 py-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 font-semibold"
+                disabled={ordersWithCoupons.length === 0}
+              >
+                <Printer size={20} />
+                <span>Imprimir Todos os Cupons</span>
+              </button>
+              
+              <button
+                onClick={printOrdersList}
+                className="bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 font-semibold"
+              >
+                <FileText size={20} />
+                <span>Lista de Pedidos</span>
+              </button>
+              
+              <div className="bg-gray-100 px-6 py-4 rounded-lg flex items-center justify-center space-x-2">
+                <Receipt size={20} className="text-gray-600" />
+                <span className="font-semibold text-gray-700">
+                  {ordersWithCoupons.length} cupons prontos
+                </span>
+              </div>
+            </div>
+
+            {/* Lista de Cupons Fiscais */}
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-6 border-b">
+                <h3 className="text-lg font-semibold text-gray-800">Cupons Fiscais Disponíveis</h3>
+                <p className="text-gray-600 text-sm mt-1">
+                  Clique em "Imprimir" para gerar cupom otimizado para seu dispositivo
+                </p>
+              </div>
+              
+              <div className="divide-y divide-gray-200">
                 {ordersWithCoupons.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-12 text-gray-500">
                     <Receipt size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p>Nenhum cupom fiscal disponível</p>
-                    <p className="text-sm">Os cupons são gerados automaticamente quando pedidos são feitos pelo site</p>
+                    <p className="text-lg font-medium">Nenhum cupom fiscal disponível</p>
+                    <p className="text-sm mt-2">Os cupons são gerados automaticamente quando pedidos são feitos pelo site</p>
                   </div>
                 ) : (
                   ordersWithCoupons.map((order) => (
-                    <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h4 className="font-semibold text-gray-800">Cupom Fiscal #{order.id}</h4>
-                          <p className="text-gray-600">{order.customerName} - {order.phone}</p>
-                          <p className="text-sm text-gray-500">{order.date} às {order.time}</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Clock size={16} className="text-gray-400" />
-                            <span className="text-sm text-gray-500">{getTimeSinceOrder(order.createdAt)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            order.status === 'em preparo' ? 'bg-yellow-100 text-yellow-800' :
-                            order.status === 'saiu para entrega' ? 'bg-blue-100 text-blue-800' :
-                            order.status === 'entregue' ? 'bg-green-100 text-green-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {order.status}
-                          </span>
-                          <button
-                            onClick={() => printCoupon(order)}
-                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
-                          >
-                            <Printer size={16} />
-                            <span>Imprimir Cupom</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="border-t pt-3">
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div>
-                            <h5 className="font-medium text-gray-800 mb-2">Itens do Pedido:</h5>
-                            {order.items.map((item, index) => (
-                              <div key={index} className="text-sm text-gray-600 mb-1">
-                                {item.quantity}x {item.name} - R$ {(item.quantity * item.price).toFixed(2)}
-                              </div>
-                            ))}
-                          </div>
-                          <div>
-                            <h5 className="font-medium text-gray-800 mb-2">Resumo Financeiro:</h5>
-                            <div className="text-sm text-gray-600 space-y-1">
-                              <div>Total: R$ {order.total.toFixed(2)}</div>
-                              <div>Pagamento: {order.paymentMethod}</div>
-                              {order.cashAmount && (
-                                <>
-                                  <div>Valor Pago: R$ {order.cashAmount.toFixed(2)}</div>
-                                  <div>Troco: R$ {(order.cashAmount - order.total).toFixed(2)}</div>
-                                </>
-                              )}
+                    <div key={order.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
+                        {/* Informações do Pedido */}
+                        <div className="flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+                            <div>
+                              <h4 className="font-semibold text-gray-800 text-lg">
+                                Cupom #{order.id}
+                              </h4>
+                              <p className="text-gray-600">{order.customerName}</p>
                             </div>
+                            
+                            <div className="flex items-center space-x-4 text-sm text-gray-500">
+                              <span className="flex items-center space-x-1">
+                                <Clock size={16} />
+                                <span>{getTimeSinceOrder(order.createdAt)}</span>
+                              </span>
+                              <span>{order.date} às {order.time}</span>
+                            </div>
+                            
+                            <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                              order.status === 'em preparo' ? 'bg-yellow-100 text-yellow-800' :
+                              order.status === 'saiu para entrega' ? 'bg-blue-100 text-blue-800' :
+                              order.status === 'entregue' ? 'bg-green-100 text-green-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </div>
+                          
+                          {/* Resumo do Pedido */}
+                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-gray-600">
+                                <strong>📱 Telefone:</strong> {order.phone}
+                              </p>
+                              <p className="text-gray-600">
+                                <strong>💰 Total:</strong> R$ {order.total.toFixed(2)} ({order.paymentMethod})
+                              </p>
+                              <p className="text-gray-600">
+                                <strong>🛒 Itens:</strong> {order.items.length} produto(s)
+                              </p>
+                            </div>
+                            
+                            {order.address && (
+                              <div>
+                                <p className="text-gray-600">
+                                  <strong>📍 Endereço:</strong>
+                                </p>
+                                <p className="text-gray-500 text-xs">
+                                  {order.address}
+                                  {order.streetName && ` - ${order.streetName}`}
+                                  {order.houseNumber && `, ${order.houseNumber}`}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                         
-                        {order.address && (
-                          <div className="mt-3 pt-3 border-t">
-                            <h5 className="font-medium text-gray-800 mb-1">Endereço de Entrega:</h5>
-                            <p className="text-sm text-gray-600">
-                              📍 {order.address}
-                              {order.streetName && ` - ${order.streetName}`}
-                              {order.houseNumber && `, ${order.houseNumber}`}
-                            </p>
+                        {/* Botão de Impressão */}
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => printCoupon(order)}
+                            className="w-full lg:w-auto bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 font-semibold shadow-md hover:shadow-lg"
+                          >
+                            <Printer size={18} />
+                            <span>Imprimir Cupom</span>
+                          </button>
+                          
+                          {/* Indicador de Compatibilidade */}
+                          <div className="mt-2 text-center">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                              📱💻 Celular & PC
+                            </span>
                           </div>
-                        )}
+                        </div>
                       </div>
+                      
+                      {/* Detalhes dos Itens (Expansível) */}
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-sm text-purple-600 hover:text-purple-800 font-medium">
+                          Ver detalhes dos itens
+                        </summary>
+                        <div className="mt-3 bg-gray-50 rounded-lg p-4">
+                          {order.items.map((item, index) => (
+                            <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                              <div>
+                                <span className="font-medium text-gray-800">{item.name}</span>
+                                {item.size && <span className="text-gray-600 text-sm"> ({item.size})</span>}
+                                {item.extras?.length && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Extras: {item.extras.join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium">{item.quantity}x R$ {item.price.toFixed(2)}</div>
+                                <div className="text-sm text-gray-500">= R$ {(item.quantity * item.price).toFixed(2)}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+            
+            {/* Informações do Sistema */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Receipt className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-blue-800 mb-2">Sistema de Impressão Inteligente</h4>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    <p>📱 <strong>Celular:</strong> Interface otimizada com botão de impressão destacado</p>
+                    <p>💻 <strong>Computador:</strong> Impressão automática em papel A4 ou térmico 80mm</p>
+                    <p>🖨️ <strong>Compatível:</strong> Impressoras térmicas, jato de tinta e laser</p>
+                    <p>📄 <strong>Formato:</strong> Cupom fiscal válido com todas as informações obrigatórias</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1374,6 +1674,21 @@ export default function AdminPanel() {
         {/* Aba Pedidos */}
         {activeTab === 'pedidos' && (
           <div className="space-y-4">
+            {/* Botão para imprimir lista de pedidos */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Lista de Pedidos</h2>
+                <p className="text-gray-600">Gerencie todos os pedidos recebidos</p>
+              </div>
+              <button
+                onClick={printOrdersList}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              >
+                <Printer size={20} />
+                <span>Imprimir Lista de Pedidos</span>
+              </button>
+            </div>
+
             {filteredOrders.map((order) => (
               <div key={order.id} className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex justify-between items-start mb-4">
@@ -1860,17 +2175,26 @@ export default function AdminPanel() {
                   </label>
                 </div>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-2">💻 Impressão em Computador</h4>
+                  <h4 className="font-medium text-blue-800 mb-2">💻📱 Impressão Responsiva</h4>
                   <p className="text-sm text-blue-700">
-                    Os cupons fiscais agora são compatíveis com impressoras de computador (A4) além das impressoras térmicas tradicionais.
-                    O sistema detecta automaticamente o tipo de impressora e ajusta o formato.
+                    Os cupons fiscais agora são totalmente responsivos! Funcionam perfeitamente em celulares com interface otimizada 
+                    e em computadores com impressão automática. O sistema detecta automaticamente o dispositivo e ajusta o formato.
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Pedidos para Impressão</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Pedidos para Impressão</h3>
+                <button
+                  onClick={printOrdersList}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                >
+                  <Printer size={16} />
+                  <span>Imprimir Todos os Pedidos</span>
+                </button>
+              </div>
               <div className="space-y-3">
                 {orders.slice(0, 10).map((order) => (
                   <div key={order.id} className="flex justify-between items-center p-3 border border-gray-200 rounded-lg">
@@ -2075,7 +2399,8 @@ export default function AdminPanel() {
                     ✅ Sistema de cupons fiscais ativo e funcionando
                   </p>
                   <p className="text-sm text-green-600 mt-1">
-                    Todos os pedidos feitos pelo site geram automaticamente cupons fiscais válidos para impressão em papel térmico ou computador.
+                    Todos os pedidos feitos pelo site geram automaticamente cupons fiscais válidos para impressão responsiva 
+                    em papel térmico (celular/impressoras térmicas) ou A4 (computador).
                   </p>
                 </div>
               </div>
