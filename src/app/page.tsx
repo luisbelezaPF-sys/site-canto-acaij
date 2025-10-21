@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { ShoppingCart, Phone, MapPin, Clock, Instagram, Plus, Minus, Trash2, CreditCard, DollarSign, FileText, Calendar, TrendingUp, Package, Lock, LogOut } from 'lucide-react'
+import { supabase, insertPedido, fetchPedidos, subscribeToChanges, PedidoSupabase } from '@/lib/supabase'
 
 interface OrderItem {
   id: string
@@ -28,7 +29,7 @@ interface CompletedOrder {
   total: number
   timestamp: Date
   date: string
-  hasFiscalCoupon: boolean // Nova propriedade para controlar cupom fiscal
+  hasFiscalCoupon: boolean
 }
 
 interface DailyReport {
@@ -88,10 +89,53 @@ export default function Home() {
   // Estados para ingredientes editáveis
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
 
-  const deliveryFee = 3.00
-  const whatsappNumber = "+5535997440729" // Número para relatórios
+  // Estados para Supabase
+  const [pedidosSupabase, setPedidosSupabase] = useState<PedidoSupabase[]>([])
+  const [isConnected, setIsConnected] = useState(false)
 
-  // Verificar autenticação salva
+  const deliveryFee = 3.00
+  const whatsappNumber = "+5535997440729"
+
+  // Verificar conexão com Supabase e carregar dados
+  useEffect(() => {
+    const initSupabase = async () => {
+      try {
+        // Testar conexão
+        const { data, error } = await supabase.from('pedidos').select('count').limit(1)
+        if (!error) {
+          setIsConnected(true)
+          console.log('✅ Conectado ao Supabase com sucesso!')
+          
+          // Carregar pedidos existentes
+          const pedidos = await fetchPedidos()
+          setPedidosSupabase(pedidos || [])
+        } else {
+          console.error('❌ Erro ao conectar com Supabase:', error)
+          setIsConnected(false)
+        }
+      } catch (error) {
+        console.error('❌ Erro na inicialização do Supabase:', error)
+        setIsConnected(false)
+      }
+    }
+
+    initSupabase()
+
+    // Configurar escuta em tempo real
+    const subscription = subscribeToChanges((payload) => {
+      console.log('🔄 Mudança detectada:', payload)
+      // Recarregar pedidos quando houver mudanças
+      fetchPedidos().then(pedidos => {
+        setPedidosSupabase(pedidos || [])
+      })
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  // Verificar autenticação salva (mantido para compatibilidade)
   useEffect(() => {
     const savedAuth = localStorage.getItem('acai-admin-auth')
     if (savedAuth === 'authenticated') {
@@ -99,117 +143,73 @@ export default function Home() {
     }
   }, [])
 
-  // Carregar dados salvos no localStorage
+  // Carregar dados padrão (ingredientes e promoções)
   useEffect(() => {
-    const savedOrders = localStorage.getItem('acai-orders')
-    const savedReports = localStorage.getItem('acai-reports')
-    const savedPromotions = localStorage.getItem('acai-promotions')
-    const savedIngredients = localStorage.getItem('acai-ingredients')
-    
-    if (savedOrders) {
-      const orders = JSON.parse(savedOrders).map((order: any) => ({
-        ...order,
-        timestamp: new Date(order.timestamp),
-        hasFiscalCoupon: order.hasFiscalCoupon || false // Garantir compatibilidade com dados antigos
-      }))
-      setCompletedOrders(orders)
-    }
-    
-    if (savedReports) {
-      setDailyReports(JSON.parse(savedReports))
-    }
+    // Carregar ingredientes padrão
+    const defaultIngredients: Ingredient[] = [
+      { id: '1', name: 'Ovomaltine', price: 4.00 },
+      { id: '2', name: 'Nutella', price: 5.00 },
+      { id: '3', name: 'Creme de Leite Ninho', price: 4.00 },
+      { id: '4', name: 'Creme de Ovomaltine', price: 4.00 },
+      { id: '5', name: 'Creme de Ferrero Rocher', price: 4.00 },
+      { id: '6', name: 'Creme de Avelã', price: 4.00 },
+      { id: '7', name: 'Mousse de Maracujá', price: 3.00 },
+      { id: '8', name: 'Mousse de Morango', price: 3.00 },
+      { id: '9', name: 'Mousse de Limão', price: 3.00 },
+      { id: '10', name: 'Sonho de Valsa', price: 3.00 },
+      { id: '11', name: 'Trento', price: 3.00 },
+      { id: '12', name: 'Confete', price: 2.50 },
+      { id: '13', name: 'Bis Branco', price: 2.50 },
+      { id: '14', name: 'Bis Preto', price: 2.50 },
+      { id: '15', name: 'Suflair', price: 5.00 },
+      { id: '16', name: 'Chantilly', price: 2.50 },
+      { id: '17', name: 'Paçoca', price: 3.00 },
+      { id: '18', name: 'Leite Condensado', price: 2.50 },
+      { id: '19', name: 'Kit Kat', price: 4.00 },
+      { id: '20', name: 'Gotas de Chocolate', price: 2.50 },
+      { id: '21', name: 'Power Ball', price: 2.50 },
+      { id: '22', name: 'Granola', price: 2.50 },
+      { id: '23', name: 'Leite em Pó', price: 2.00 },
+      { id: '24', name: 'Danoninho', price: 2.00 },
+      { id: '25', name: 'Banana', price: 2.00 },
+      { id: '26', name: 'Morango', price: 3.00 },
+      { id: '27', name: 'Uva', price: 3.00 },
+      { id: '28', name: 'Kiwi', price: 3.00 },
+      { id: '29', name: 'Manga', price: 3.00 },
+      { id: '30', name: 'Cobertura Chocolate', price: 2.00 },
+      { id: '31', name: 'Cobertura Morango', price: 2.00 },
+      { id: '32', name: 'Cobertura Caramelo', price: 2.00 }
+    ]
+    setIngredients(defaultIngredients)
 
-    if (savedPromotions) {
-      setPromotionImages(JSON.parse(savedPromotions))
-    } else {
-      // Imagens de promoção padrão
-      const defaultPromotions: PromotionImage[] = [
-        {
-          id: '1',
-          url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&h=300&fit=crop',
-          title: 'Promoção Açaí Premium',
-          description: 'Açaí 500ml + 2 acompanhamentos por apenas R$ 15,00'
-        },
-        {
-          id: '2',
-          url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400&h=300&fit=crop',
-          title: 'Combo Milk Shake',
-          description: 'Milk Shake 700ml + Açaí 300ml por R$ 25,00'
-        },
-        {
-          id: '3',
-          url: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop',
-          title: 'Oferta Especial',
-          description: 'Na compra de 2 açaís, ganhe 1 água mineral grátis'
-        },
-        {
-          id: '4',
-          url: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop',
-          title: 'Promoção Final de Semana',
-          description: '20% de desconto em todos os produtos aos sábados e domingos'
-        }
-      ]
-      setPromotionImages(defaultPromotions)
-      localStorage.setItem('acai-promotions', JSON.stringify(defaultPromotions))
-    }
-
-    // Carregar ingredientes ou usar padrão
-    if (savedIngredients) {
-      setIngredients(JSON.parse(savedIngredients))
-    } else {
-      const defaultIngredients: Ingredient[] = [
-        { id: '1', name: 'Ovomaltine', price: 4.00 },
-        { id: '2', name: 'Nutella', price: 5.00 },
-        { id: '3', name: 'Creme de Leite Ninho', price: 4.00 },
-        { id: '4', name: 'Creme de Ovomaltine', price: 4.00 },
-        { id: '5', name: 'Creme de Ferrero Rocher', price: 4.00 },
-        { id: '6', name: 'Creme de Avelã', price: 4.00 },
-        { id: '7', name: 'Mousse de Maracujá', price: 3.00 },
-        { id: '8', name: 'Mousse de Morango', price: 3.00 },
-        { id: '9', name: 'Mousse de Limão', price: 3.00 },
-        { id: '10', name: 'Sonho de Valsa', price: 3.00 },
-        { id: '11', name: 'Trento', price: 3.00 },
-        { id: '12', name: 'Confete', price: 2.50 },
-        { id: '13', name: 'Bis Branco', price: 2.50 },
-        { id: '14', name: 'Bis Preto', price: 2.50 },
-        { id: '15', name: 'Suflair', price: 5.00 },
-        { id: '16', name: 'Chantilly', price: 2.50 },
-        { id: '17', name: 'Paçoca', price: 3.00 },
-        { id: '18', name: 'Leite Condensado', price: 2.50 },
-        { id: '19', name: 'Kit Kat', price: 4.00 },
-        { id: '20', name: 'Gotas de Chocolate', price: 2.50 },
-        { id: '21', name: 'Power Ball', price: 2.50 },
-        { id: '22', name: 'Granola', price: 2.50 },
-        { id: '23', name: 'Leite em Pó', price: 2.00 },
-        { id: '24', name: 'Danoninho', price: 2.00 },
-        { id: '25', name: 'Banana', price: 2.00 },
-        { id: '26', name: 'Morango', price: 3.00 },
-        { id: '27', name: 'Uva', price: 3.00 },
-        { id: '28', name: 'Kiwi', price: 3.00 },
-        { id: '29', name: 'Manga', price: 3.00 },
-        { id: '30', name: 'Cobertura Chocolate', price: 2.00 },
-        { id: '31', name: 'Cobertura Morango', price: 2.00 },
-        { id: '32', name: 'Cobertura Caramelo', price: 2.00 }
-      ]
-      setIngredients(defaultIngredients)
-      localStorage.setItem('acai-ingredients', JSON.stringify(defaultIngredients))
-    }
-
-    // Verificar se precisa gerar relatório diário (executar às 23:59)
-    const checkDailyReport = () => {
-      const now = new Date()
-      const hour = now.getHours()
-      const minute = now.getMinutes()
-      
-      // Executar às 23:59
-      if (hour === 23 && minute === 59) {
-        generateAndSendDailyReport()
+    // Carregar promoções padrão
+    const defaultPromotions: PromotionImage[] = [
+      {
+        id: '1',
+        url: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&h=300&fit=crop',
+        title: 'Promoção Açaí Premium',
+        description: 'Açaí 500ml + 2 acompanhamentos por apenas R$ 15,00'
+      },
+      {
+        id: '2',
+        url: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400&h=300&fit=crop',
+        title: 'Combo Milk Shake',
+        description: 'Milk Shake 700ml + Açaí 300ml por R$ 25,00'
+      },
+      {
+        id: '3',
+        url: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop',
+        title: 'Oferta Especial',
+        description: 'Na compra de 2 açaís, ganhe 1 água mineral grátis'
+      },
+      {
+        id: '4',
+        url: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop',
+        title: 'Promoção Final de Semana',
+        description: '20% de desconto em todos os produtos aos sábados e domingos'
       }
-    }
-
-    // Verificar a cada minuto
-    const interval = setInterval(checkDailyReport, 60000)
-    return () => clearInterval(interval)
+    ]
+    setPromotionImages(defaultPromotions)
   }, [])
 
   // Função de login
@@ -240,12 +240,6 @@ export default function Home() {
     } else {
       setShowLogin(true)
     }
-  }
-
-  // Salvar dados no localStorage
-  const saveData = (orders: CompletedOrder[], reports: DailyReport[]) => {
-    localStorage.setItem('acai-orders', JSON.stringify(orders))
-    localStorage.setItem('acai-reports', JSON.stringify(reports))
   }
 
   const acaiSizes = [
@@ -345,20 +339,73 @@ export default function Home() {
     setCart([])
   }
 
-  // Registrar pedido completo
+  // Função para salvar pedido no Supabase
+  const saveOrderToSupabase = async (orderData: {
+    items: OrderItem[]
+    customerName?: string
+    address?: string
+    streetName?: string
+    houseNumber?: string
+    paymentMethod: string
+    cashAmount?: number
+    subtotal: number
+    deliveryFee: number
+    total: number
+  }) => {
+    try {
+      // Converter cada item do carrinho em um registro separado na tabela
+      const pedidosParaSalvar = orderData.items.map(item => {
+        const productName = `${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''} - ${item.flavor}`
+        const toppingsText = item.toppings.length > 0 ? ` com ${item.toppings.join(', ')}` : ''
+        
+        return {
+          produto: productName + toppingsText,
+          quantidade: item.quantity,
+          valor: item.price,
+          nome_cliente: orderData.customerName || null,
+          email_cliente: null, // Pode ser adicionado futuramente
+          status: 'pendente',
+          endereco: orderData.address || null,
+          rua: orderData.streetName || null,
+          numero_casa: orderData.houseNumber || null,
+          forma_pagamento: orderData.paymentMethod || null,
+          valor_pago: orderData.cashAmount || null,
+          taxa_entrega: orderData.deliveryFee,
+          total: orderData.total
+        }
+      })
+
+      // Salvar todos os itens no Supabase
+      for (const pedido of pedidosParaSalvar) {
+        await insertPedido(pedido)
+      }
+
+      console.log('✅ Pedido salvo no Supabase com sucesso!')
+      
+      // Recarregar pedidos
+      const pedidos = await fetchPedidos()
+      setPedidosSupabase(pedidos || [])
+      
+      return true
+    } catch (error) {
+      console.error('❌ Erro ao salvar pedido no Supabase:', error)
+      return false
+    }
+  }
+
+  // Registrar pedido completo (mantido para compatibilidade com relatórios)
   const registerOrder = (orderData: Omit<CompletedOrder, 'id' | 'timestamp' | 'date' | 'hasFiscalCoupon'>) => {
     const now = new Date()
     const newOrder: CompletedOrder = {
       ...orderData,
       id: Date.now().toString(),
       timestamp: now,
-      date: now.toISOString().split('T')[0], // YYYY-MM-DD
-      hasFiscalCoupon: true // Marcar que este pedido tem cupom fiscal
+      date: now.toISOString().split('T')[0],
+      hasFiscalCoupon: true
     }
 
     const updatedOrders = [...completedOrders, newOrder]
     setCompletedOrders(updatedOrders)
-    saveData(updatedOrders, dailyReports)
 
     return newOrder
   }
@@ -399,7 +446,6 @@ export default function Home() {
     if (report.totalSales > 0) {
       const updatedReports = [...dailyReports.filter(r => r.date !== today), report]
       setDailyReports(updatedReports)
-      saveData(completedOrders, updatedReports)
       
       sendDailyReportToWhatsApp(report)
     }
@@ -525,7 +571,7 @@ export default function Home() {
     alert('Milk Shake adicionado ao carrinho! 🥤')
   }
 
-  const sendOrderWithDeliveryInfo = () => {
+  const sendOrderWithDeliveryInfo = async () => {
     if (cart.length === 0) {
       alert('Seu carrinho está vazio!')
       return
@@ -541,7 +587,7 @@ export default function Home() {
       return
     }
 
-    // Registrar o pedido no sistema
+    // Dados do pedido
     const orderData = {
       items: [...cart],
       customerName: customerName || undefined,
@@ -555,52 +601,50 @@ export default function Home() {
       total: calculateCartTotal()
     }
 
+    // Salvar no Supabase
+    const savedToSupabase = await saveOrderToSupabase(orderData)
+    
+    if (savedToSupabase) {
+      console.log('✅ Pedido salvo no Supabase!')
+    } else {
+      console.log('⚠️ Erro ao salvar no Supabase, mas continuando com WhatsApp...')
+    }
+
+    // Registrar pedido local (para relatórios)
     const registeredOrder = registerOrder(orderData)
 
     // MENSAGEM FORMATADA CORRETAMENTE PARA WHATSAPP
-    let message = `Novo pedido
-`
+    let message = `Novo pedido\n`
     
     // Cliente
     if (customerName) {
-      message += `Cliente: ${customerName}
-`
+      message += `Cliente: ${customerName}\n`
     }
     
     // Telefone (se disponível)
-    message += `Telefone: (a ser informado)
-`
+    message += `Telefone: (a ser informado)\n`
     
     // Endereço
-    message += `Endereco: ${deliveryAddress}
-`
-    message += `Rua: ${streetName}
-`
-    message += `Numero: ${houseNumber}
-
-`
+    message += `Endereco: ${deliveryAddress}\n`
+    message += `Rua: ${streetName}\n`
+    message += `Numero: ${houseNumber}\n\n`
     
     // Itens
-    message += `Itens:
-`
+    message += `Itens:\n`
     cart.forEach((item) => {
       const productName = item.type === 'acai' ? 'Acai' : 'Milk Shake'
       const sizeInfo = item.size + (item.isZero ? ' Zero' : '')
       const ingredientsList = item.toppings.length > 0 ? item.toppings.join(', ') : 'sem adicionais'
       
-      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}
-`
+      message += `- ${productName} ${sizeInfo} sabor ${item.flavor} com ${ingredientsList}\n`
     })
-    message += `
-`
+    message += `\n`
     
     // Total
-    message += `Total: R$ ${calculateCartTotal().toFixed(2)}
-`
+    message += `Total: R$ ${calculateCartTotal().toFixed(2)}\n`
     
     // Forma de pagamento
-    message += `Forma de pagamento: ${selectedPayment}
-`
+    message += `Forma de pagamento: ${selectedPayment}\n`
     
     // Observações (se houver troco)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
@@ -608,8 +652,7 @@ export default function Home() {
       const total = calculateCartTotal()
       const change = cashValue - total
       if (change > 0) {
-        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}
-`
+        message += `Observacoes: Valor pago R$ ${cashValue.toFixed(2)}, troco R$ ${change.toFixed(2)}\n`
       }
     }
 
@@ -648,6 +691,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-purple-50 to-yellow-100">
+      {/* Status de Conexão Supabase */}
+      {isConnected && (
+        <div className="bg-green-500 text-white text-center py-2 text-sm">
+          ✅ Conectado ao Supabase - Dados sincronizados em tempo real
+        </div>
+      )}
+      
+      {!isConnected && (
+        <div className="bg-orange-500 text-white text-center py-2 text-sm">
+          ⚠️ Conectando ao banco de dados... Pedidos serão salvos quando conectar
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-gradient-to-r from-purple-600 to-purple-800 text-white shadow-2xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -857,8 +913,8 @@ export default function Home() {
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-purple-100">Cupons Fiscais</p>
-                      <p className="text-3xl font-bold">{completedOrders.filter(order => order.hasFiscalCoupon).length}</p>
+                      <p className="text-purple-100">Pedidos Supabase</p>
+                      <p className="text-3xl font-bold">{pedidosSupabase.length}</p>
                     </div>
                     <FileText size={40} className="text-purple-200" />
                   </div>
@@ -886,70 +942,51 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Lista de Relatórios Diários */}
+              {/* Lista de Pedidos do Supabase */}
               <div className="space-y-4">
-                <h3 className="text-xl font-bold text-purple-800">📅 Relatórios por Data</h3>
+                <h3 className="text-xl font-bold text-purple-800">📋 Pedidos Salvos no Supabase</h3>
                 
-                {dailyReports.length === 0 ? (
+                {pedidosSupabase.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <FileText size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p>Nenhum relatório gerado ainda</p>
-                    <p className="text-sm">Os relatórios são gerados automaticamente às 23:59</p>
+                    <Package size={48} className="mx-auto mb-4 text-gray-300" />
+                    <p>Nenhum pedido salvo ainda</p>
+                    <p className="text-sm">Os pedidos aparecerão aqui quando forem feitos</p>
                   </div>
                 ) : (
-                  dailyReports
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .map((report) => (
-                      <div key={report.date} className="bg-gray-50 rounded-xl p-6">
-                        <div className="flex justify-between items-start mb-4">
+                  <div className="grid gap-4">
+                    {pedidosSupabase.slice(0, 10).map((pedido) => (
+                      <div key={pedido.id} className="bg-gray-50 rounded-xl p-4">
+                        <div className="flex justify-between items-start mb-2">
                           <div>
-                            <h4 className="text-lg font-bold text-purple-800">
-                              📅 {new Date(report.date).toLocaleDateString('pt-BR')}
-                            </h4>
-                            <div className="flex space-x-6 text-sm text-gray-600 mt-2">
-                              <span>📦 {report.totalSales} pedidos</span>
-                              <span>💰 R$ {report.totalRevenue.toFixed(2)}</span>
-                              <span>📄 {report.orders.filter(o => o.hasFiscalCoupon).length} cupons fiscais</span>
-                            </div>
+                            <h4 className="font-bold text-purple-800">{pedido.produto}</h4>
+                            <p className="text-sm text-gray-600">
+                              Qtd: {pedido.quantidade} | Valor: R$ {pedido.valor.toFixed(2)}
+                            </p>
+                            {pedido.nome_cliente && (
+                              <p className="text-sm text-gray-600">Cliente: {pedido.nome_cliente}</p>
+                            )}
                           </div>
-                          <button
-                            onClick={() => sendDailyReportToWhatsApp(report)}
-                            className="bg-green-500 text-white px-4 py-2 rounded-full text-sm hover:bg-green-600 transition-all duration-300"
-                          >
-                            📱 Reenviar
-                          </button>
-                        </div>
-                        
-                        {/* Top 3 Produtos */}
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div>
-                            <h5 className="font-semibold text-gray-700 mb-2">🏆 Produtos Mais Vendidos</h5>
-                            <div className="space-y-1">
-                              {Object.entries(report.productSales)
-                                .sort(([,a], [,b]) => b.quantity - a.quantity)
-                                .slice(0, 3)
-                                .map(([product, data], index) => (
-                                  <div key={product} className="text-sm">
-                                    <span className="font-medium">{index + 1}. {product.split(' - ')[0]}</span>
-                                    <span className="text-gray-500 ml-2">({data.quantity}x)</span>
-                                  </div>
-                                ))}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <h5 className="font-semibold text-gray-700 mb-2">📊 Resumo</h5>
-                            <div className="text-sm space-y-1">
-                              <p>Ticket médio: R$ {(report.totalRevenue / report.totalSales).toFixed(2)}</p>
-                              <p>Produtos diferentes: {Object.keys(report.productSales).length}</p>
-                              <p>Horário: {report.orders.length > 0 ? 
-                                `${report.orders[0].timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${report.orders[report.orders.length - 1].timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` 
-                                : 'N/A'}</p>
-                            </div>
+                          <div className="text-right">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                              pedido.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                              pedido.status === 'concluido' ? 'bg-green-100 text-green-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {pedido.status}
+                            </span>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(pedido.created_at || '').toLocaleString('pt-BR')}
+                            </p>
                           </div>
                         </div>
+                        {pedido.endereco && (
+                          <p className="text-sm text-gray-600">
+                            📍 {pedido.endereco} - {pedido.rua}, {pedido.numero_casa}
+                          </p>
+                        )}
                       </div>
-                    ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
