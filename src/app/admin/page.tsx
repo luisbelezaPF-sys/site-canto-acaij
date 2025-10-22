@@ -851,8 +851,10 @@ export default function AdminPanel() {
     }
   };
 
-  // Função para imprimir cupom fiscal - RESPONSIVA para celular e PC
+  // Função para imprimir cupom fiscal - CORRIGIDA E FUNCIONAL
   const printCoupon = (order: Order) => {
+    console.log('🖨️ Iniciando impressão do cupom para pedido:', order.id);
+    
     const couponContent = `
       <div style="width: 100%; max-width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; margin: 0 auto; padding: 10px; background: white;">
         <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
@@ -1046,6 +1048,10 @@ export default function AdminPanel() {
         </html>
       `);
       printWindow.document.close();
+      console.log('✅ Cupom fiscal aberto para impressão');
+    } else {
+      console.error('❌ Erro ao abrir janela de impressão');
+      alert('Erro ao abrir janela de impressão. Verifique se o bloqueador de pop-ups está desabilitado.');
     }
   };
 
@@ -1424,7 +1430,7 @@ export default function AdminPanel() {
             >
               <Settings size={20} />
               <span>Gerenciar Ingredientes</span>
-              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
+              <span className="bg-yellow-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
                 {ingredients.length}
               </span>
             </button>
@@ -1437,7 +1443,7 @@ export default function AdminPanel() {
             >
               <ImageIcon size={20} />
               <span>Promoções</span>
-              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
+              <span className="bg-orange-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
                 {promotionImages.length}/4
               </span>
             </button>
