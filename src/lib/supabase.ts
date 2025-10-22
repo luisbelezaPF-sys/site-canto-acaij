@@ -9,15 +9,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Variáveis do Supabase não configuradas. Usando cliente mock.')
 }
 
-// Cria cliente SEMPRE - mesmo se as variáveis não estiverem definidas
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      }
-    })
-  : createClient('https://placeholder.supabase.co', 'placeholder-key')
+// Cria cliente SEMPRE - usando as variáveis reais ou fallback
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  }
+)
 
 // Tipos para o banco de dados
 export interface PedidoSupabase {
