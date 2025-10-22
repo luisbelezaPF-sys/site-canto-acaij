@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { ShoppingCart, Phone, MapPin, Clock, Instagram, Plus, Minus, Trash2, CreditCard, DollarSign, FileText, Calendar, TrendingUp, Package, Lock, LogOut } from 'lucide-react'
+import { ShoppingCart, Phone, MapPin, Clock, Instagram, Plus, Minus, Trash2, CreditCard, FileText, Calendar, TrendingUp, Package, Lock, LogOut, Edit, Settings, Circle } from 'lucide-react'
 import { supabase, insertPedido, fetchPedidos, subscribeToChanges, PedidoSupabase, testConnection } from '@/lib/supabase'
 
 interface OrderItem {
@@ -85,9 +85,13 @@ export default function Home() {
 
   // Estados para promoções
   const [promotionImages, setPromotionImages] = useState<PromotionImage[]>([])
+  const [editingPromotion, setEditingPromotion] = useState<PromotionImage | null>(null)
+  const [showPromotionEditor, setShowPromotionEditor] = useState(false)
 
   // Estados para ingredientes editáveis
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null)
+  const [showIngredientEditor, setShowIngredientEditor] = useState(false)
 
   // Estados para Supabase
   const [pedidosSupabase, setPedidosSupabase] = useState<PedidoSupabase[]>([])
@@ -249,6 +253,131 @@ export default function Home() {
     } else {
       setShowLogin(true)
     }
+  }
+
+  // Função para imprimir pedido
+  const printOrder = (pedido: PedidoSupabase) => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Cupom - O Canto do Açaí</title>
+        <style>
+          @media print {
+            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; font-size: 12px; }
+            .cupom { max-width: 300px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .item { margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #ccc; }
+            .total { font-weight: bold; font-size: 14px; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 2px solid #000; }
+            .footer { text-align: center; margin-top: 15px; font-size: 10px; }
+          }
+          @media screen {
+            body { background: #f5f5f5; padding: 20px; }
+            .cupom { background: white; max-width: 300px; margin: 0 auto; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+            .item { margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #ccc; }
+            .total { font-weight: bold; font-size: 14px; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 2px solid #000; }
+            .footer { text-align: center; margin-top: 15px; font-size: 10px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="cupom">
+          <div class="header">
+            <h2>🍇 O CANTO DO AÇAÍ</h2>
+            <p>Poço Fundo - MG</p>
+            <p>WhatsApp: (35) 99744-0729</p>
+            <p>Data: ${new Date(pedido.created_at || '').toLocaleString('pt-BR')}</p>
+          </div>
+          
+          <div class="item">
+            <strong>PRODUTO:</strong><br>
+            ${pedido.produto}
+          </div>
+          
+          <div class="item">
+            <strong>QUANTIDADE:</strong> ${pedido.quantidade}<br>
+            <strong>VALOR UNITÁRIO:</strong> R$ ${pedido.valor.toFixed(2)}
+          </div>
+          
+          ${pedido.nome_cliente ? `
+          <div class="item">
+            <strong>CLIENTE:</strong> ${pedido.nome_cliente}
+          </div>
+          ` : ''}
+          
+          ${pedido.endereco ? `
+          <div class="item">
+            <strong>ENDEREÇO:</strong><br>
+            ${pedido.endereco}<br>
+            ${pedido.rua}, ${pedido.numero_casa}
+          </div>
+          ` : ''}
+          
+          <div class="item">
+            <strong>PAGAMENTO:</strong> ${pedido.forma_pagamento || 'Não informado'}
+            ${pedido.valor_pago ? `<br><strong>VALOR PAGO:</strong> R$ ${pedido.valor_pago.toFixed(2)}` : ''}
+          </div>
+          
+          <div class="total">
+            TOTAL: R$ ${(pedido.valor * pedido.quantidade).toFixed(2)}
+          </div>
+          
+          <div class="footer">
+            <p>Obrigado pela preferência!</p>
+            <p>Volte sempre! 💜</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+    
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+      printWindow.close()
+    }
+  }
+
+  // Função para salvar promoção editada
+  const savePromotion = (promotion: PromotionImage) => {
+    if (editingPromotion?.id) {
+      // Editar existente
+      setPromotionImages(prev => 
+        prev.map(p => p.id === promotion.id ? promotion : p)
+      )
+    } else {
+      // Adicionar nova
+      const newPromotion = {
+        ...promotion,
+        id: Date.now().toString()
+      }
+      setPromotionImages(prev => [...prev, newPromotion])
+    }
+    setEditingPromotion(null)
+    setShowPromotionEditor(false)
+  }
+
+  // Função para salvar ingrediente editado
+  const saveIngredient = (ingredient: Ingredient) => {
+    if (editingIngredient?.id) {
+      // Editar existente
+      setIngredients(prev => 
+        prev.map(i => i.id === ingredient.id ? ingredient : i)
+      )
+    } else {
+      // Adicionar novo
+      const newIngredient = {
+        ...ingredient,
+        id: Date.now().toString()
+      }
+      setIngredients(prev => [...prev, newIngredient])
+    }
+    setEditingIngredient(null)
+    setShowIngredientEditor(false)
   }
 
   const acaiSizes = [
@@ -468,57 +597,57 @@ export default function Home() {
   const formatReportForWhatsApp = (report: DailyReport): string => {
     const date = new Date(report.date).toLocaleDateString('pt-BR')
     
-    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `📅 Data: ${date}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    let message = `📊 *RELATÓRIO DIÁRIO - O CANTO DO AÇAÍ*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `📅 Data: ${date}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     
-    message += `💰 *RESUMO FINANCEIRO:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• Total de vendas: ${report.totalSales} pedidos\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `💰 *RESUMO FINANCEIRO:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• Total de vendas: ${report.totalSales} pedidos\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• Faturamento total: R$ ${report.totalRevenue.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     
-    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `📦 *PRODUTOS MAIS VENDIDOS:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     const sortedProducts = Object.entries(report.productSales)
       .sort(([,a], [,b]) => b.quantity - a.quantity)
       .slice(0, 5)
     
     sortedProducts.forEach(([product, data], index) => {
-      message += `${index + 1}. ${product}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `${index + 1}. ${product}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `   Qtd: ${data.quantity} | Receita: R$ ${data.revenue.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     })
     
-    message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n📋 *LISTA COMPLETA DE PEDIDOS:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     report.orders.forEach((order, index) => {
       const time = order.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n🕐 Pedido ${index + 1} - ${time}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n🕐 Pedido ${index + 1} - ${time}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
       
       if (order.customerName) {
-        message += `👤 Cliente: ${order.customerName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        message += `👤 Cliente: ${order.customerName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
       }
       
       message += `💳 Pagamento: ${order.paymentMethod}`
       if (order.cashAmount) {
         message += ` (Valor pago: R$ ${order.cashAmount.toFixed(2)})`
       }
-      message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
       
       if (order.address) {
-        message += `📍 Endereço: ${order.address}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        message += `📍 Endereço: ${order.address}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        if (order.streetName) message += `🛣️ Rua: ${order.streetName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        if (order.houseNumber) message += `🏠 Nº: ${order.houseNumber}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
       }
       
-      message += `📦 Itens:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `📦 Itens:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
       order.items.forEach(item => {
-        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        message += `  • ${item.type === 'acai' ? 'Açaí' : 'Milk Shake'} ${item.size}${item.isZero ? ' (Zero)' : ''}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        message += `    ${item.flavor} (x${item.quantity}) - R$ ${(item.price * item.quantity).toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
         if (item.toppings.length > 0) {
-          message += `    Adicionais: ${item.toppings.join(', ')}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+          message += `    Adicionais: ${item.toppings.join(', ')}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
         }
       })
       
-      message += `💰 Total: R$ ${order.total.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `💰 Total: R$ ${order.total.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     })
     
-    message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
+    message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n✨ Relatório gerado automaticamente pelo sistema O Canto do Açaí`
     
     return message
   }
@@ -628,51 +757,51 @@ export default function Home() {
       supabaseError = error.message
       
       // Mostrar erro específico para o usuário
-      alert(`ERRO ao salvar no banco de dados: ${error.message}\\\\\\\\n\\\\\\\\nO pedido será enviado pelo WhatsApp, mas não será salvo no sistema.`)
+      alert(`ERRO ao salvar no banco de dados: ${error.message}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nO pedido será enviado pelo WhatsApp, mas não será salvo no sistema.`)
     }
 
     // Registrar pedido local (para relatórios)
     const registeredOrder = registerOrder(orderData)
 
     // MENSAGEM FORMATADA CORRETAMENTE PARA WHATSAPP
-    let message = `🍇 *NOVO PEDIDO - O CANTO DO AÇAÍ*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    let message = `🍇 *NOVO PEDIDO - O CANTO DO AÇAÍ*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     
     // Cliente
     if (customerName) {
-      message += `👤 *Cliente:* ${customerName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `👤 *Cliente:* ${customerName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     }
     
     // Telefone (se disponível)
-    message += `📱 *Telefone:* (a ser informado)\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `📱 *Telefone:* (a ser informado)\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     
     // Endereço
-    message += `📍 *ENDEREÇO DE ENTREGA:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• Endereço: ${deliveryAddress}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• Rua: ${streetName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• Número: ${houseNumber}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `📍 *ENDEREÇO DE ENTREGA:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• Endereço: ${deliveryAddress}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• Rua: ${streetName}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• Número: ${houseNumber}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     
     // Itens
-    message += `🛒 *ITENS DO PEDIDO:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `🛒 *ITENS DO PEDIDO:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     cart.forEach((item, index) => {
       const productName = item.type === 'acai' ? 'Açaí' : 'Milk Shake'
       const sizeInfo = item.size + (item.isZero ? ' (Zero)' : '')
       const ingredientsList = item.toppings.length > 0 ? item.toppings.join(', ') : 'sem adicionais'
       
-      message += `${index + 1}. *${productName} ${sizeInfo}*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-      message += `   Sabor: ${item.flavor}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-      message += `   Adicionais: ${ingredientsList}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-      message += `   Quantidade: ${item.quantity}x\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-      message += `   Valor: R$ ${(item.price * item.quantity).toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `${index + 1}. *${productName} ${sizeInfo}*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `   Sabor: ${item.flavor}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `   Adicionais: ${ingredientsList}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `   Quantidade: ${item.quantity}x\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+      message += `   Valor: R$ ${(item.price * item.quantity).toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     })
     
     // Resumo financeiro
-    message += `💰 *RESUMO FINANCEIRO:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-    message += `• *TOTAL: R$ ${calculateCartTotal().toFixed(2)}*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `💰 *RESUMO FINANCEIRO:*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• Subtotal: R$ ${calculateItemsTotal().toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• Taxa de entrega: R$ ${deliveryFee.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `• *TOTAL: R$ ${calculateCartTotal().toFixed(2)}*\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     
     // Forma de pagamento
-    message += `💳 *Forma de pagamento:* ${selectedPayment}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+    message += `💳 *Forma de pagamento:* ${selectedPayment}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
     
     // Observações (se houver troco)
     if (selectedPayment === 'Dinheiro' && cashAmount) {
@@ -680,20 +809,9 @@ export default function Home() {
       const total = calculateCartTotal()
       const change = cashValue - total
       if (change > 0) {
-        message += `💵 *Valor pago:* R$ ${cashValue.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
-        message += `💸 *Troco:* R$ ${change.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        message += `💵 *Valor pago:* R$ ${cashValue.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
+        message += `💸 *Troco:* R$ ${change.toFixed(2)}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n`
       }
-    }
-
-    // Status do salvamento
-    if (savedToSupabase) {
-      message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n✅ *Pedido salvo no sistema automaticamente*`
-    } else {
-      message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n❌ *ERRO: Pedido NÃO foi salvo no sistema*`
-      if (supabaseError) {
-        message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n⚠️ *Erro:* ${supabaseError}`
-      }
-      message += `\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n📝 *FAVOR ANOTAR MANUALMENTE*`
     }
 
     // Enviar para o WhatsApp com o número correto
@@ -711,11 +829,7 @@ export default function Home() {
     setHouseNumber('')
     setCustomerName('')
     
-    alert(
-      savedToSupabase 
-        ? '✅ Pedido enviado e SALVO NO SUPABASE com sucesso!' 
-        : `❌ Pedido enviado pelo WhatsApp, mas ERRO ao salvar no Supabase: ${supabaseError}`
-    )
+    // Não mostrar mais o popup de confirmação
   }
 
   const sendCartToWhatsApp = () => {
@@ -729,7 +843,7 @@ export default function Home() {
   }
 
   const sendToWhatsApp = (customMessage?: string) => {
-    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nPor favor, me ajude a montar meu pedido:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Tamanho:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Sabor:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Acompanhamentos:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Endereço para entrega:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nObrigado!`
+    const message = customMessage || `Olá! Quero fazer um pedido no O Canto do Açaí!\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nPor favor, me ajude a montar meu pedido:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Tamanho:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Sabor:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Acompanhamentos:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n• Endereço para entrega:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nObrigado!`
     openWhatsApp(message)
   }
 
@@ -890,10 +1004,139 @@ export default function Home() {
         </div>
       )}
 
+      {/* Modal de Editor de Promoções */}
+      {showPromotionEditor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8">
+            <h2 className="text-2xl font-bold text-purple-800 mb-6">
+              {editingPromotion?.id ? 'Editar Promoção' : 'Nova Promoção'}
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Título:
+                </label>
+                <input
+                  type="text"
+                  value={editingPromotion?.title || ''}
+                  onChange={(e) => setEditingPromotion(prev => prev ? {...prev, title: e.target.value} : {id: '', url: '', title: e.target.value, description: ''})}
+                  placeholder="Ex: Promoção Especial"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Descrição:
+                </label>
+                <textarea
+                  value={editingPromotion?.description || ''}
+                  onChange={(e) => setEditingPromotion(prev => prev ? {...prev, description: e.target.value} : {id: '', url: '', title: '', description: e.target.value})}
+                  placeholder="Ex: Açaí 500ml + 2 acompanhamentos por R$ 15,00"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  URL da Imagem:
+                </label>
+                <input
+                  type="url"
+                  value={editingPromotion?.url || ''}
+                  onChange={(e) => setEditingPromotion(prev => prev ? {...prev, url: e.target.value} : {id: '', url: e.target.value, title: '', description: ''})}
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    setShowPromotionEditor(false)
+                    setEditingPromotion(null)
+                  }}
+                  className="flex-1 bg-gray-500 text-white py-3 rounded-xl font-bold hover:bg-gray-600 transition-all duration-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => editingPromotion && savePromotion(editingPromotion)}
+                  className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-all duration-300"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Editor de Ingredientes */}
+      {showIngredientEditor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8">
+            <h2 className="text-2xl font-bold text-purple-800 mb-6">
+              {editingIngredient?.id ? 'Editar Ingrediente' : 'Novo Ingrediente'}
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome:
+                </label>
+                <input
+                  type="text"
+                  value={editingIngredient?.name || ''}
+                  onChange={(e) => setEditingIngredient(prev => prev ? {...prev, name: e.target.value} : {id: '', name: e.target.value, price: 0})}
+                  placeholder="Ex: Nutella"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preço (R$):
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editingIngredient?.price || ''}
+                  onChange={(e) => setEditingIngredient(prev => prev ? {...prev, price: parseFloat(e.target.value) || 0} : {id: '', name: '', price: parseFloat(e.target.value) || 0})}
+                  placeholder="Ex: 5.00"
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    setShowIngredientEditor(false)
+                    setEditingIngredient(null)
+                  }}
+                  className="flex-1 bg-gray-500 text-white py-3 rounded-xl font-bold hover:bg-gray-600 transition-all duration-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => editingIngredient && saveIngredient(editingIngredient)}
+                  className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-all duration-300"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Relatórios (apenas para usuários autenticados) */}
       {showReports && isAuthenticated && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-3">
@@ -901,7 +1144,7 @@ export default function Home() {
                     <FileText size={20} />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-purple-800">📊 Relatórios de Vendas</h2>
+                    <h2 className="text-2xl font-bold text-purple-800">📊 Painel Administrativo</h2>
                     <p className="text-sm text-green-600 font-medium">✓ Acesso Administrativo Autorizado</p>
                   </div>
                 </div>
@@ -969,6 +1212,28 @@ export default function Home() {
                 >
                   📊 Gerar Relatório Automático
                 </button>
+
+                <button
+                  onClick={() => {
+                    setEditingPromotion({id: '', url: '', title: '', description: ''})
+                    setShowPromotionEditor(true)
+                  }}
+                  className="bg-orange-500 text-white px-6 py-3 rounded-full font-bold hover:bg-orange-600 transition-all duration-300"
+                >
+                  <Edit className="inline-block mr-2" size={20} />
+                  Gerenciar Promoções
+                </button>
+
+                <button
+                  onClick={() => {
+                    setEditingIngredient({id: '', name: '', price: 0})
+                    setShowIngredientEditor(true)
+                  }}
+                  className="bg-yellow-500 text-white px-6 py-3 rounded-full font-bold hover:bg-yellow-600 transition-all duration-300"
+                >
+                  <Circle className="inline-block mr-2" size={20} />
+                  Alterar Preços
+                </button>
               </div>
 
               {/* Lista de Pedidos do Supabase */}
@@ -986,7 +1251,7 @@ export default function Home() {
                     {pedidosSupabase.slice(0, 10).map((pedido) => (
                       <div key={pedido.id} className="bg-gray-50 rounded-xl p-4">
                         <div className="flex justify-between items-start mb-2">
-                          <div>
+                          <div className="flex-1">
                             <h4 className="font-bold text-purple-800">{pedido.produto}</h4>
                             <p className="text-sm text-gray-600">
                               Qtd: {pedido.quantidade} | Valor: R$ {pedido.valor.toFixed(2)}
@@ -994,29 +1259,123 @@ export default function Home() {
                             {pedido.nome_cliente && (
                               <p className="text-sm text-gray-600">Cliente: {pedido.nome_cliente}</p>
                             )}
+                            {pedido.endereco && (
+                              <p className="text-sm text-gray-600">
+                                📍 {pedido.endereco} - {pedido.rua}, {pedido.numero_casa}
+                              </p>
+                            )}
                           </div>
-                          <div className="text-right">
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                              pedido.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
-                              pedido.status === 'concluido' ? 'bg-green-100 text-green-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {pedido.status}
-                            </span>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {new Date(pedido.created_at || '').toLocaleString('pt-BR')}
-                            </p>
+                          <div className="flex items-center space-x-2 ml-4">
+                            <button
+                              onClick={() => printOrder(pedido)}
+                              className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-all duration-300"
+                              title="Imprimir Cupom"
+                            >
+                              <Circle size={16} />
+                            </button>
+                            <div className="text-right">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                pedido.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :
+                                pedido.status === 'concluido' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {pedido.status}
+                              </span>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {new Date(pedido.created_at || '').toLocaleString('pt-BR')}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        {pedido.endereco && (
-                          <p className="text-sm text-gray-600">
-                            📍 {pedido.endereco} - {pedido.rua}, {pedido.numero_casa}
-                          </p>
-                        )}
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Seção de Promoções Ativas */}
+              <div className="mt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-purple-800">🎉 Promoções Ativas</h3>
+                  <button
+                    onClick={() => {
+                      setEditingPromotion({id: '', url: '', title: '', description: ''})
+                      setShowPromotionEditor(true)
+                    }}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-full font-bold hover:bg-purple-700 transition-all duration-300"
+                  >
+                    <Plus className="inline-block mr-1" size={16} />
+                    Nova Promoção
+                  </button>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  {promotionImages.map((promotion) => (
+                    <div key={promotion.id} className="bg-white rounded-xl p-4 shadow-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-purple-800">{promotion.title}</h4>
+                          <p className="text-sm text-gray-600">{promotion.description}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditingPromotion(promotion)
+                            setShowPromotionEditor(true)
+                          }}
+                          className="bg-orange-500 text-white p-2 rounded-full hover:bg-orange-600 transition-all duration-300"
+                          title="Editar Promoção"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </div>
+                      <img
+                        src={promotion.url}
+                        alt={promotion.title}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Seção de Ingredientes */}
+              <div className="mt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-purple-800">🍓 Ingredientes do Cardápio</h3>
+                  <button
+                    onClick={() => {
+                      setEditingIngredient({id: '', name: '', price: 0})
+                      setShowIngredientEditor(true)
+                    }}
+                    className="bg-green-600 text-white px-4 py-2 rounded-full font-bold hover:bg-green-700 transition-all duration-300"
+                  >
+                    <Plus className="inline-block mr-1" size={16} />
+                    Novo Ingrediente
+                  </button>
+                </div>
+                
+                <div className="grid md:grid-cols-3 gap-4 max-h-64 overflow-y-auto">
+                  {ingredients.map((ingredient) => (
+                    <div key={ingredient.id} className="bg-white rounded-xl p-3 shadow-lg">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-purple-800 text-sm">{ingredient.name}</h4>
+                          <p className="text-green-600 font-bold">R$ {ingredient.price.toFixed(2)}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditingIngredient(ingredient)
+                            setShowIngredientEditor(true)
+                          }}
+                          className="bg-yellow-500 text-white p-1 rounded-full hover:bg-yellow-600 transition-all duration-300"
+                          title="Editar Preço"
+                        >
+                          <Edit size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1098,7 +1457,7 @@ export default function Home() {
                       {promotion.description}
                     </p>
                     <button
-                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n${promotion.description}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nPoderia me dar mais detalhes?`)}
+                      onClick={() => sendToWhatsApp(`Olá! Tenho interesse na promoção: ${promotion.title}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n${promotion.description}\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nPoderia me dar mais detalhes?`)}
                       className="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white py-3 rounded-full font-bold hover:from-purple-700 hover:to-purple-900 transition-all duration-300"
                     >
                       <Phone className="inline-block mr-2" size={20} />
@@ -1824,16 +2183,6 @@ export default function Home() {
                 )}
               </div>
             )}
-            
-            <div className="text-center">
-              <button
-                onClick={() => sendToWhatsApp()}
-                className="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-8 py-4 rounded-full text-xl font-bold hover:from-purple-700 hover:to-purple-900 transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                <Phone className="inline-block mr-2" size={24} />
-                Fazer Pedido Agora
-              </button>
-            </div>
           </section>
         )}
 
@@ -1882,7 +2231,7 @@ export default function Home() {
                   Estamos sempre prontos para atender você! Entre em contato pelo WhatsApp e faça seu pedido.
                 </p>
                 <button
-                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nTenho uma dúvida sobre:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nObrigado!`)}
+                  onClick={() => sendToWhatsApp(`Olá! Gostaria de entrar em contato com vocês!\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nTenho uma dúvida sobre:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\nObrigado!`)}
                   className="bg-yellow-400 text-purple-800 px-6 py-3 rounded-full font-bold hover:bg-yellow-300 transition-all duration-300 transform hover:scale-105"
                 >
                   <Phone className="inline-block mr-2" size={20} />
