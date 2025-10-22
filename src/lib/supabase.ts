@@ -37,26 +37,82 @@ export const isSupabaseConfigured = () => {
   return true // Sempre configurado agora
 }
 
-// Função SEGURA para inserir pedido
+// Função ALTERNATIVA para inserir pedido via API direta
+export const insertPedidoViaAPI = async (pedido: Omit<PedidoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
+  console.log('🚀 Tentando inserir pedido via API direta:', pedido)
+  
+  try {
+    // Usar fetch direto com headers corretos
+    const response = await fetch(`${supabaseUrl}/rest/v1/pedidos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(pedido)
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Erro na resposta da API:', response.status, errorText)
+      throw new Error(`Erro HTTP: ${response.status} - ${errorText}`)
+    }
+
+    const data = await response.json()
+    console.log('✅ Pedido inserido com sucesso via API:', data)
+    return data
+  } catch (error) {
+    console.error('❌ Erro na função insertPedidoViaAPI:', error)
+    
+    // Se falhar, tentar via servidor usando fetch para localhost
+    try {
+      console.log('🔄 Tentando via servidor local...')
+      const serverResponse = await fetch('/api/supabase-insert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pedido)
+      })
+      
+      if (serverResponse.ok) {
+        const serverData = await serverResponse.json()
+        console.log('✅ Pedido inserido via servidor:', serverData)
+        return serverData
+      }
+    } catch (serverError) {
+      console.log('❌ Servidor local não disponível, continuando...')
+    }
+    
+    throw error
+  }
+}
+
+// Função SEGURA para inserir pedido (com fallback)
 export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
   console.log('🚀 Tentando inserir pedido:', pedido)
   
   try {
+    // Primeiro tenta o método padrão do Supabase
     const { data, error } = await supabase
       .from('pedidos')
       .insert([pedido])
       .select()
     
     if (error) {
-      console.error('❌ Erro ao inserir pedido:', error)
-      throw error
+      console.error('❌ Erro ao inserir pedido (método padrão):', error)
+      // Se falhar, tenta via API direta
+      return await insertPedidoViaAPI(pedido)
     }
     
     console.log('✅ Pedido inserido com sucesso:', data)
     return data
   } catch (error) {
     console.error('❌ Erro na função insertPedido:', error)
-    throw error
+    // Fallback para API direta
+    return await insertPedidoViaAPI(pedido)
   }
 }
 
