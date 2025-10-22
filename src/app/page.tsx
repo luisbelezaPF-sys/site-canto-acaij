@@ -1245,9 +1245,7 @@ export default function Home() {
                 </button>
 
                 <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
+                  onClick={() => {
                     console.log('🎉 Abrindo editor de promoções')
                     setEditingPromotion({id: '', url: '', title: '', description: ''})
                     setShowPromotionEditor(true)
@@ -1259,9 +1257,7 @@ export default function Home() {
                 </button>
 
                 <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
+                  onClick={() => {
                     console.log('💰 Abrindo editor de preços')
                     setEditingIngredient({id: '', name: '', price: 0})
                     setShowIngredientEditor(true)

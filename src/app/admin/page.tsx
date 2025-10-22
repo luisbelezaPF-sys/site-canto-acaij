@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, Upload, Image as ImageIcon, FileText, Receipt, Save } from 'lucide-react';
+import { Eye, EyeOff, Package, ShoppingCart, Printer, Settings, LogOut, Plus, Edit, Trash2, Download, Search, Clock, Bell, BellOff, Upload, Image as ImageIcon, FileText, Receipt, Save, TrendingUp, DollarSign, Calendar, BarChart3 } from 'lucide-react';
+import { fetchPedidos, PedidoSupabase } from '@/lib/supabase';
 
 interface Product {
   id: string;
@@ -36,7 +37,7 @@ interface Order {
   houseNumber?: string;
   cashAmount?: number;
   createdAt: Date;
-  hasFiscalCoupon?: boolean; // Nova propriedade para cupom fiscal
+  hasFiscalCoupon?: boolean;
 }
 
 interface PromotionImage {
@@ -50,6 +51,16 @@ interface Ingredient {
   id: string;
   name: string;
   price: number;
+}
+
+// Interface para relatórios de faturamento
+interface SalesReport {
+  totalRevenue: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  topProducts: { name: string; quantity: number; revenue: number }[];
+  dailyBreakdown: { date: string; revenue: number; orders: number }[];
+  paymentMethods: { method: string; count: number; revenue: number }[];
 }
 
 export default function AdminPanel() {
@@ -70,11 +81,175 @@ export default function AdminPanel() {
   const [searchTerm, setSearchTerm] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  // Estados para faturamento e relatórios
+  const [pedidosSupabase, setPedidosSupabase] = useState<PedidoSupabase[]>([]);
+  const [salesReport, setSalesReport] = useState<SalesReport | null>(null);
+  const [reportPeriod, setReportPeriod] = useState<'today' | 'week' | 'month' | 'all'>('today');
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+
   // Estados para upload de imagens
   const [uploadingProductImage, setUploadingProductImage] = useState(false);
   const [uploadingPromotionImage, setUploadingPromotionImage] = useState(false);
   const [productImagePreview, setProductImagePreview] = useState<string>('');
   const [promotionImagePreview, setPromotionImagePreview] = useState<string>('');
+
+  // Carregar pedidos do Supabase e calcular faturamento
+  useEffect(() => {
+    const loadSupabaseData = async () => {
+      try {
+        console.log('🔄 Carregando dados do Supabase para faturamento...');
+        const pedidos = await fetchPedidos();
+        setPedidosSupabase(pedidos || []);
+        
+        if (pedidos && pedidos.length > 0) {
+          console.log(`✅ ${pedidos.length} pedidos carregados do Supabase`);
+          generateSalesReport(pedidos, reportPeriod);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar dados do Supabase:', error);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadSupabaseData();
+    }
+  }, [isAuthenticated, reportPeriod]);
+
+  // Função para gerar relatório de vendas baseado nos dados do Supabase
+  const generateSalesReport = (pedidos: PedidoSupabase[], period: 'today' | 'week' | 'month' | 'all') => {
+    setIsLoadingReport(true);
+    
+    try {
+      const now = new Date();
+      let filteredPedidos = pedidos;
+
+      // Filtrar por período
+      switch (period) {
+        case 'today':
+          const today = now.toISOString().split('T')[0];
+          filteredPedidos = pedidos.filter(p => 
+            p.created_at && p.created_at.startsWith(today)
+          );
+          break;
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          filteredPedidos = pedidos.filter(p => 
+            p.created_at && new Date(p.created_at) >= weekAgo
+          );
+          break;
+        case 'month':
+          const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          filteredPedidos = pedidos.filter(p => 
+            p.created_at && new Date(p.created_at) >= monthAgo
+          );
+          break;
+        case 'all':
+        default:
+          filteredPedidos = pedidos;
+          break;
+      }
+
+      // Calcular métricas
+      const totalRevenue = filteredPedidos.reduce((sum, p) => {
+        const itemTotal = p.valor * p.quantidade;
+        const deliveryFee = p.taxa_entrega || 0;
+        return sum + itemTotal + deliveryFee;
+      }, 0);
+
+      const totalOrders = filteredPedidos.length;
+      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+      // Produtos mais vendidos
+      const productSales: { [key: string]: { quantity: number; revenue: number } } = {};
+      filteredPedidos.forEach(p => {
+        const productName = p.produto;
+        if (!productSales[productName]) {
+          productSales[productName] = { quantity: 0, revenue: 0 };
+        }
+        productSales[productName].quantity += p.quantidade;
+        productSales[productName].revenue += p.valor * p.quantidade;
+      });
+
+      const topProducts = Object.entries(productSales)
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10);
+
+      // Breakdown diário
+      const dailyBreakdown: { [key: string]: { revenue: number; orders: number } } = {};
+      filteredPedidos.forEach(p => {
+        const date = p.created_at ? p.created_at.split('T')[0] : 'Sem data';
+        if (!dailyBreakdown[date]) {
+          dailyBreakdown[date] = { revenue: 0, orders: 0 };
+        }
+        dailyBreakdown[date].revenue += (p.valor * p.quantidade) + (p.taxa_entrega || 0);
+        dailyBreakdown[date].orders += 1;
+      });
+
+      const dailyBreakdownArray = Object.entries(dailyBreakdown)
+        .map(([date, data]) => ({ date, ...data }))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 30); // Últimos 30 dias
+
+      // Métodos de pagamento
+      const paymentMethods: { [key: string]: { count: number; revenue: number } } = {};
+      filteredPedidos.forEach(p => {
+        const method = p.forma_pagamento || 'Não informado';
+        if (!paymentMethods[method]) {
+          paymentMethods[method] = { count: 0, revenue: 0 };
+        }
+        paymentMethods[method].count += 1;
+        paymentMethods[method].revenue += (p.valor * p.quantidade) + (p.taxa_entrega || 0);
+      });
+
+      const paymentMethodsArray = Object.entries(paymentMethods)
+        .map(([method, data]) => ({ method, ...data }));
+
+      const report: SalesReport = {
+        totalRevenue,
+        totalOrders,
+        averageOrderValue,
+        topProducts,
+        dailyBreakdown: dailyBreakdownArray,
+        paymentMethods: paymentMethodsArray
+      };
+
+      setSalesReport(report);
+      console.log('📊 Relatório de vendas gerado:', report);
+    } catch (error) {
+      console.error('❌ Erro ao gerar relatório:', error);
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
+
+  // Função para exportar relatório
+  const exportReport = () => {
+    if (!salesReport) return;
+
+    const reportData = {
+      periodo: reportPeriod,
+      dataGeracao: new Date().toISOString(),
+      resumo: {
+        faturamentoTotal: salesReport.totalRevenue,
+        totalPedidos: salesReport.totalOrders,
+        ticketMedio: salesReport.averageOrderValue
+      },
+      produtosMaisVendidos: salesReport.topProducts,
+      breakdownDiario: salesReport.dailyBreakdown,
+      metodosPagamento: salesReport.paymentMethods
+    };
+
+    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio-faturamento-${reportPeriod}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // Dados iniciais de produtos do site
   useEffect(() => {
@@ -187,7 +362,7 @@ export default function AdminPanel() {
       const parsedOrders = JSON.parse(savedOrders).map((order: any) => ({
         ...order,
         createdAt: new Date(order.timestamp || order.createdAt),
-        hasFiscalCoupon: order.hasFiscalCoupon || false // Garantir compatibilidade
+        hasFiscalCoupon: order.hasFiscalCoupon || false
       }));
       setOrders(parsedOrders);
     } else {
@@ -356,7 +531,7 @@ export default function AdminPanel() {
           streetName: 'Rua Principal',
           houseNumber: '100',
           createdAt: new Date(),
-          hasFiscalCoupon: true // Novos pedidos sempre têm cupom fiscal
+          hasFiscalCoupon: true
         };
 
         setOrders(prev => [newOrder, ...prev]);
@@ -369,7 +544,7 @@ export default function AdminPanel() {
         // Mostrar notificação visual
         showNotification('Novo pedido recebido!', `Pedido #${newOrder.id} - ${newOrder.customerName}`);
       }
-    }, 30000); // Verificar a cada 30 segundos
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [products, soundEnabled]);
@@ -1006,7 +1181,7 @@ export default function AdminPanel() {
     }
   };
 
-  const generateSalesReport = (period: 'daily' | 'weekly' | 'monthly') => {
+  const generateSalesReportFile = (period: 'daily' | 'weekly' | 'monthly') => {
     const now = new Date();
     let startDate: Date;
     let periodName: string;
@@ -1204,6 +1379,21 @@ export default function AdminPanel() {
             </button>
 
             <button
+              onClick={() => setActiveTab('faturamento')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === 'faturamento' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <TrendingUp size={20} />
+              <span>Faturamento</span>
+              {salesReport && (
+                <span className="bg-green-500 text-white text-xs rounded-full px-2 py-1 ml-auto">
+                  R$ {salesReport.totalRevenue.toFixed(0)}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={() => setActiveTab('cupons')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                 activeTab === 'cupons' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
@@ -1300,6 +1490,7 @@ export default function AdminPanel() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
             {activeTab === 'pedidos' && 'Gestão de Pedidos'}
+            {activeTab === 'faturamento' && 'Relatório de Faturamento'}
             {activeTab === 'cupons' && 'Cupons Fiscais'}
             {activeTab === 'produtos' && 'Gerenciamento de Produtos'}
             {activeTab === 'ingredientes' && 'Gerenciar Ingredientes'}
@@ -1322,6 +1513,187 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
+
+        {/* Aba Faturamento - NOVA IMPLEMENTAÇÃO */}
+        {activeTab === 'faturamento' && (
+          <div className="space-y-6">
+            {/* Seletor de Período */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">📊 Período do Relatório</h3>
+                <button
+                  onClick={exportReport}
+                  disabled={!salesReport}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Download size={16} />
+                  <span>Exportar</span>
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { key: 'today', label: 'Hoje', icon: '📅' },
+                  { key: 'week', label: 'Última Semana', icon: '📆' },
+                  { key: 'month', label: 'Último Mês', icon: '🗓️' },
+                  { key: 'all', label: 'Todos os Tempos', icon: '📊' }
+                ].map(period => (
+                  <button
+                    key={period.key}
+                    onClick={() => setReportPeriod(period.key as any)}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      reportPeriod === period.key
+                        ? 'border-purple-600 bg-purple-100 text-purple-800'
+                        : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                    }`}
+                  >
+                    <div className="text-2xl mb-2">{period.icon}</div>
+                    <div className="font-semibold">{period.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cards de Métricas Principais */}
+            {salesReport && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-100 text-sm">Faturamento Total</p>
+                        <p className="text-3xl font-bold">R$ {salesReport.totalRevenue.toFixed(2)}</p>
+                      </div>
+                      <DollarSign size={40} className="text-green-200" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm">Total de Pedidos</p>
+                        <p className="text-3xl font-bold">{salesReport.totalOrders}</p>
+                      </div>
+                      <ShoppingCart size={40} className="text-blue-200" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-purple-100 text-sm">Ticket Médio</p>
+                        <p className="text-3xl font-bold">R$ {salesReport.averageOrderValue.toFixed(2)}</p>
+                      </div>
+                      <TrendingUp size={40} className="text-purple-200" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-orange-100 text-sm">Pedidos Supabase</p>
+                        <p className="text-3xl font-bold">{pedidosSupabase.length}</p>
+                      </div>
+                      <BarChart3 size={40} className="text-orange-200" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Produtos Mais Vendidos */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">🏆 Produtos Mais Vendidos</h3>
+                  <div className="space-y-3">
+                    {salesReport.topProducts.slice(0, 10).map((product, index) => (
+                      <div key={product.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                            index === 0 ? 'bg-yellow-500' :
+                            index === 1 ? 'bg-gray-400' :
+                            index === 2 ? 'bg-orange-500' :
+                            'bg-blue-500'
+                          }`}>
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800">{product.name}</p>
+                            <p className="text-sm text-gray-600">{product.quantity} unidades vendidas</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-green-600">R$ {product.revenue.toFixed(2)}</p>
+                          <p className="text-sm text-gray-500">receita</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Breakdown Diário */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">📈 Vendas por Dia</h3>
+                  <div className="space-y-2">
+                    {salesReport.dailyBreakdown.slice(0, 15).map((day) => (
+                      <div key={day.date} className="flex items-center justify-between p-3 border-b border-gray-100">
+                        <div>
+                          <p className="font-semibold text-gray-800">
+                            {new Date(day.date).toLocaleDateString('pt-BR', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p className="text-sm text-gray-600">{day.orders} pedidos</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-green-600">R$ {day.revenue.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Métodos de Pagamento */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">💳 Métodos de Pagamento</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {salesReport.paymentMethods.map((method) => (
+                      <div key={method.method} className="p-4 bg-gray-50 rounded-lg">
+                        <div className="text-center">
+                          <p className="text-2xl mb-2">
+                            {method.method === 'PIX' ? '📱' :
+                             method.method === 'Cartão' ? '💳' :
+                             method.method === 'Dinheiro' ? '💵' : '❓'}
+                          </p>
+                          <p className="font-semibold text-gray-800">{method.method}</p>
+                          <p className="text-sm text-gray-600">{method.count} pedidos</p>
+                          <p className="font-bold text-green-600">R$ {method.revenue.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Loading State */}
+            {isLoadingReport && (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Gerando relatório de faturamento...</p>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!salesReport && !isLoadingReport && (
+              <div className="text-center py-12">
+                <TrendingUp size={48} className="mx-auto mb-4 text-gray-300" />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">Nenhum dado de faturamento</h3>
+                <p className="text-gray-500">Os dados aparecerão aqui quando houver pedidos no Supabase</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Aba Gerenciar Ingredientes */}
         {activeTab === 'ingredientes' && (
@@ -2269,7 +2641,7 @@ export default function AdminPanel() {
               <h3 className="text-lg font-semibold mb-4">Gerar Relatórios</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button
-                  onClick={() => generateSalesReport('daily')}
+                  onClick={() => generateSalesReportFile('daily')}
                   className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Download size={20} />
@@ -2277,7 +2649,7 @@ export default function AdminPanel() {
                 </button>
                 
                 <button
-                  onClick={() => generateSalesReport('weekly')}
+                  onClick={() => generateSalesReportFile('weekly')}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Download size={20} />
@@ -2285,7 +2657,7 @@ export default function AdminPanel() {
                 </button>
                 
                 <button
-                  onClick={() => generateSalesReport('monthly')}
+                  onClick={() => generateSalesReportFile('monthly')}
                   className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
                 >
                   <Download size={20} />
