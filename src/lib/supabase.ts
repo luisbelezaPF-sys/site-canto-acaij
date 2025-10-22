@@ -1,25 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Configuração segura para Vercel - verifica se as variáveis existem
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Configuração com as credenciais fornecidas pelo usuário
+const supabaseUrl = 'https://vbusdqtkxltoihamufrv.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZidXNkcXRreGx0b2loYW11cmZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNTc1NzYsImV4cCI6MjA3NjYzMzU3Nn0.dlvKnBW--S_T8_Julud6jwIKIpuHdKKXUhG1kHTOOgI'
 
-// Validação das variáveis de ambiente
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Variáveis do Supabase não configuradas. Usando cliente mock.')
-}
-
-// Cria cliente SEMPRE - usando as variáveis reais ou fallback
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co', 
-  supabaseAnonKey || 'placeholder-key',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    }
+// Cria cliente Supabase com as credenciais reais
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
   }
-)
+})
 
 // Tipos para o banco de dados
 export interface PedidoSupabase {
@@ -43,17 +34,12 @@ export interface PedidoSupabase {
 
 // Função para verificar se Supabase está configurado
 export const isSupabaseConfigured = () => {
-  return !!(supabaseUrl && supabaseAnonKey)
+  return true // Sempre configurado agora
 }
 
 // Função SEGURA para inserir pedido
 export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_at' | 'updated_at'>) => {
   console.log('🚀 Tentando inserir pedido:', pedido)
-  
-  if (!isSupabaseConfigured()) {
-    console.warn('⚠️ Supabase não configurado. Pedido não será salvo.')
-    throw new Error('Supabase não configurado. Configure as variáveis de ambiente.')
-  }
   
   try {
     const { data, error } = await supabase
@@ -78,11 +64,6 @@ export const insertPedido = async (pedido: Omit<PedidoSupabase, 'id' | 'created_
 export const fetchPedidos = async () => {
   console.log('📥 Buscando pedidos do Supabase...')
   
-  if (!isSupabaseConfigured()) {
-    console.warn('⚠️ Supabase não configurado. Retornando array vazio.')
-    return []
-  }
-  
   try {
     const { data, error } = await supabase
       .from('pedidos')
@@ -104,10 +85,6 @@ export const fetchPedidos = async () => {
 
 // Função para atualizar status do pedido
 export const updatePedidoStatus = async (id: number, status: string) => {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase não configurado')
-  }
-  
   try {
     const { data, error } = await supabase
       .from('pedidos')
@@ -129,11 +106,6 @@ export const updatePedidoStatus = async (id: number, status: string) => {
 
 // Função para escutar mudanças em tempo real
 export const subscribeToChanges = (callback: (payload: any) => void) => {
-  if (!isSupabaseConfigured()) {
-    console.warn('⚠️ Supabase não configurado. Subscription não será criada.')
-    return null
-  }
-  
   try {
     return supabase
       .channel('pedidos_changes')
@@ -152,13 +124,8 @@ export const subscribeToChanges = (callback: (payload: any) => void) => {
   }
 }
 
-// Função para testar conexão - MELHORADA
+// Função para testar conexão
 export const testConnection = async () => {
-  if (!isSupabaseConfigured()) {
-    console.log('❌ Supabase não configurado - variáveis de ambiente ausentes')
-    return false
-  }
-  
   try {
     console.log('🔄 Testando conexão com Supabase...')
     
