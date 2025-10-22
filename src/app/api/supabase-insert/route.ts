@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     console.log('🚀 API Route: Inserindo pedido via servidor:', pedido)
     
     // Configuração direta do Supabase
-    const supabaseUrl = 'https://vbusdqtkxltoihamufrv.supabase.co'
+    const supabaseUrl = 'https://vbusdqtkxltoihamurfv.supabase.co'
     const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZidXNkcXRreGx0b2loYW11cmZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNTc1NzYsImV4cCI6MjA3NjYzMzU3Nn0.dlvKnBW--S_T8_Julud6jwIKIpuHdKKXUhG1kHTOOgI'
     
     // Fazer requisição direta para o Supabase via servidor
